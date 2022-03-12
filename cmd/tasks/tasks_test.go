@@ -1,0 +1,32 @@
+package tasks
+
+import (
+	"testing"
+
+	"github.com/matryer/is"
+)
+
+func TestTask(t *testing.T) {
+	is := is.New(t)
+	task := NewTask("tasks.go")
+	t.Logf("%+v", task)
+	is.True(1 == 1)
+}
+
+func TestTaskSet(t *testing.T) {
+	is := is.New(t)
+	taskList := NewTaskList()
+	taskList.Add("tasks.go", "tasks_test.go")
+	taskListSet := NewTaskListSet()
+	taskListSet.Add(taskList)
+
+	t.Logf("Task list set %+v", taskListSet)
+
+	for i := 0; i < 10; i++ {
+		task, err := taskListSet.Next(0)
+		is.NoErr(err)
+
+		t.Logf("task %+v", task)
+	}
+	is.True(1 == 1)
+}
