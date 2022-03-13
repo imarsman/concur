@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,19 +10,22 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
+	"sync"
 
+	"github.com/imarsman/goparallel/cmd/parse"
 	"github.com/imarsman/goparallel/cmd/tasks"
 	"golang.org/x/sync/semaphore"
 )
 
-var slots int
-var sem *semaphore.Weighted
+// var slots int
+// var sem *semaphore.Weighted
+// var ctx context.Context
 
 func init() {
-	slots = 8
-	sem = semaphore.NewWeighted(int64(slots))
+	// slots = 8
+	// ctx = context.TODO()
+	// sem = semaphore.NewWeighted(int64(slots))
 }
 
 // Command a command
@@ -29,17 +33,43 @@ type Command struct {
 	Command     string
 	Concurrency int
 	TaskListSet *tasks.TaskListSet
+	DryRun      bool
 }
 
+// RunCommand run all items in task lists against RunCommand
 func RunCommand(c Command) {
-	for i := 0; i < c.TaskListSet.Max(); i++ {
-		// c2 := c.Copy()
+	ctx := context.TODO()
+	sem := semaphore.NewWeighted(int64(c.Concurrency))
 
+	var wg sync.WaitGroup
+	for i := 0; i < c.TaskListSet.Max(); i++ {
+		c2 := c.Copy()
+		err := c2.Prepare()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		err = sem.Acquire(ctx, 1)
+		if err != nil {
+			panic(err)
+		}
+		go func() {
+			wg.Add(1)
+			defer sem.Release(1)
+			defer wg.Done()
+			_, _, err = c2.Execute()
+			if err != nil {
+				panic(err)
+			}
+		}()
 	}
+	wg.Wait()
 }
 
-func NewCommand(value string, taskListSet *tasks.TaskListSet) Command {
-	c := Command{Command: value, Concurrency: slots, TaskListSet: taskListSet}
+// NewCommand create a new command struct instance
+func NewCommand(value string, taskListSet *tasks.TaskListSet, slots int, dryRun bool) Command {
+	c := Command{Command: value, Concurrency: slots, TaskListSet: taskListSet, DryRun: dryRun}
+
 	return c
 }
 
@@ -55,8 +85,18 @@ func isValid(fp string) bool {
 // Copy get copy of a command to avoid overwriting the source copy
 func (c *Command) Copy() (newCommand Command) {
 	newCommand = *c
+	newCommand.DryRun = c.DryRun
 
 	return newCommand
+}
+
+var mu *sync.Mutex
+
+func (c *Command) print(input string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	fmt.Println(input)
 }
 
 /**
@@ -140,16 +180,12 @@ func (c *Command) Prepare() (err error) {
 		c.Command = strings.ReplaceAll(c.Command, "{%}", fmt.Sprint(slotNumber))
 	}
 
-	numberedParams := getParams(reNumbered, c.Command)
-
 	// {n}
-	if numberedParams["NUMBERED"] != "" {
-		numbered := numberedParams["NUMBERED"]
-		var number int
-		number, err = strconv.Atoi(numbered)
-		if err != nil {
-			return
-		}
+	found, number, err := parse.NumberFromToken(parse.RENumbered, c.Command)
+	if err != nil {
+		return err
+	}
+	if found {
 		if number-1 > len(tasks) {
 			err = errors.New("out of range")
 		}
@@ -158,16 +194,14 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n.}
-	numberedParamsNoExtensionParams := getParams(reNumberedWithNoExtension, c.Command)
-	if numberedParams["NUMBERED"] != "" {
-		numbered := numberedParamsNoExtensionParams["NUMBERED"]
-		var number int
-		number, err = strconv.Atoi(numbered)
-		if err != nil {
-			return
-		}
+	found, number, err = parse.NumberFromToken(parse.RENumberedWithNoExtension, c.Command)
+	if err != nil {
+		return err
+	}
+	if found {
 		if number-1 > len(tasks) {
 			err = errors.New("out of range")
+			return
 		}
 		task := tasks[number-1]
 
@@ -180,16 +214,14 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n/}
-	reNumberedBasenameParams := getParams(reNumberedBasename, c.Command)
-	if numberedParams["NUMBERED"] != "" {
-		numbered := reNumberedBasenameParams["NUMBERED"]
-		var number int
-		number, err = strconv.Atoi(numbered)
-		if err != nil {
-			return
-		}
+	found, number, err = parse.NumberFromToken(parse.RENumberedBasename, c.Command)
+	if err != nil {
+		return err
+	}
+	if found {
 		if number-1 > len(tasks) {
 			err = errors.New("out of range")
+			return
 		}
 
 		task := tasks[number-1]
@@ -197,16 +229,14 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n//}
-	reNumberedDirnameParams := getParams(reNumberedDirname, c.Command)
-	if numberedParams["NUMBERED"] != "" {
-		numbered := reNumberedDirnameParams["NUMBERED"]
-		var number int
-		number, err = strconv.Atoi(numbered)
-		if err != nil {
-			return
-		}
+	found, number, err = parse.NumberFromToken(parse.RENumberedDirname, c.Command)
+	if err != nil {
+		return err
+	}
+	if found {
 		if number-1 > len(tasks) {
 			err = errors.New("out of range")
+			return
 		}
 
 		task := tasks[number-1]
@@ -214,14 +244,11 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n/.}
-	reNumberedBasenameNoExtensionParams := getParams(reNumberedBasenameNoExtension, c.Command)
-	if numberedParams["NUMBERED"] != "" {
-		numbered := reNumberedBasenameNoExtensionParams["NUMBERED"]
-		var number int
-		number, err = strconv.Atoi(numbered)
-		if err != nil {
-			return
-		}
+	found, number, err = parse.NumberFromToken(parse.RENumberedBasenameNoExtension, c.Command)
+	if err != nil {
+		return err
+	}
+	if found {
 		if number-1 > len(tasks) {
 			err = errors.New("out of range")
 		}
@@ -250,13 +277,17 @@ func (c *Command) Execute() (stdout, stdErr string, err error) {
 	cmd.Stdout = stdOutMW
 	cmd.Stderr = stdErrMW
 
-	err = cmd.Run()
-	if err != nil {
-		return
-	}
+	if !c.DryRun {
+		err = cmd.Run()
+		if err != nil {
+			return
+		}
 
-	stdout = buffStdOut.String()
-	stdErr = buffStdErr.String()
+		stdout = buffStdOut.String()
+		stdErr = buffStdErr.String()
+	} else {
+		fmt.Println(cmd.String())
+	}
 
 	return
 }
