@@ -38,6 +38,23 @@ $ ls -1 /var/log/*log | goparallel echo "1 {1} 2 {2}" -a "a b c"
 
 ## Usage
 
+### Escaping command shell commands
+
+The command specified can include calls that will be run by goparallel against an input. However, the command will bee
+run prior to invocation unless escaped. Examples of characters and sequences that need to be escaped include "`" and "$(".
+
+```sh
+$ ls -1 /var/log/*log | goparallel "echo count \`wc -l {1}\`"
+count 32 /var/log/fsck_apfs_error.log
+count 432 /var/log/acroUpdaterTools.log
+count 524 /var/log/system.log
+count 395 /var/log/wifi.log
+count 357 /var/log/fsck_hfs.log
+count 39 /var/log/shutdown_monitor.log
+count 817 /var/log/fsck_apfs.log
+count 140367 /var/log/install.log
+```
+
 ### Arguments
 
 Lists in arguments **need to be quoted**. Lists are split up separately.
