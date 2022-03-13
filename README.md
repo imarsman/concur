@@ -10,11 +10,41 @@ What is likely to be implemented is substitution for incoming lists, numbered su
 option may or may not be implemented, although I have to understand it better before making a decision. Perl regular
 expressions will not be implemented, though perl can be invoked in the command part along with things like sed and awk.
 
+It is clear that the original parallel uses its own conventions. For example
+
+```sh
+$ ls -1 /var/log/*log | parallel echo "1 {1} 2 {2}"
+1 /var/log/fsck_hfs.log 2
+1 /var/log/fsck_apfs.log 2
+1 /var/log/fsck_apfs_error.log 2
+1 /var/log/install.log 2
+1 /var/log/wifi.log 2
+1 /var/log/acroUpdaterTools.log 2
+1 /var/log/shutdown_monitor.log 2
+1 /var/log/system.log 2
+```
+
+```sh
+$ ls -1 /var/log/*log | goparallel echo "1 {1} 2 {2}" -a "a b c"
+1 /var/log/acroUpdaterTools.log 2 a
+1 /var/log/wifi.log 2 b
+1 /var/log/fsck_apfs.log 2 b
+1 /var/log/install.log 2 b
+1 /var/log/fsck_apfs_error.log 2 c
+1 /var/log/shutdown_monitor.log 2 c
+1 /var/log/fsck_hfs.log 2 a
+1 /var/log/system.log 2 a
+```
+
 ## Usage
 
 ### Arguments
 
-Separate lists of arguments need to be quoted.
+Lists in arguments **need to be quoted**. Lists are split up separately.
+
+The command to be run does not need to be quoted.
+
+e.g. -a "{1..4}", -f "/var/log/*log", -a "1 2 3 4"
 
 Simple sequences are supported
 
@@ -66,6 +96,37 @@ Argument: 7 100
 Argument: 9 100
 Argument: 3 100
 Argument: 8 100
+```
+
+```sh
+$ goparallel echo "{#} {1} {2}" -f "/var/log/*log" -a "$(echo {1..10..2})"
+2 /var/log/fsck_apfs.log 3
+1 /var/log/acroUpdaterTools.log 1
+4 /var/log/fsck_hfs.log 7
+8 /var/log/wifi.log 5
+3 /var/log/fsck_apfs_error.log 5
+7 /var/log/system.log 3
+6 /var/log/shutdown_monitor.log 1
+5 /var/log/install.log 9
+```
+
+```sh
+ian@ian-macbookair ~/git/goparallel
+$ seq 15 | goparallel echo "Slot {%} {1} {2}" -f "/var/log/*log" -s 2
+Slot 1 2 /var/log/fsck_apfs.log
+Slot 2 1 /var/log/acroUpdaterTools.log
+Slot 1 4 /var/log/fsck_hfs.log
+Slot 2 3 /var/log/fsck_apfs_error.log
+Slot 1 6 /var/log/shutdown_monitor.log
+Slot 2 5 /var/log/install.log
+Slot 2 7 /var/log/system.log
+Slot 1 8 /var/log/wifi.log
+Slot 2 9 /var/log/acroUpdaterTools.log
+Slot 1 10 /var/log/fsck_apfs.log
+Slot 2 11 /var/log/fsck_apfs_error.log
+Slot 1 12 /var/log/fsck_hfs.log
+Slot 2 13 /var/log/install.log
+Slot 1 14 /var/log/shutdown_monitor.log
 ```
 
 ## Benchmarks
