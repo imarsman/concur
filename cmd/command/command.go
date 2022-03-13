@@ -217,6 +217,8 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				err = errors.New("out of range")
 			}
 			task := tasks[number-1]
+
+			// Avoid endless loop
 			if parse.RENumbered.MatchString(task.Task) {
 				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumbered.String())
 				return
@@ -246,6 +248,8 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				return
 			}
 			task := tasks[number-1]
+
+			// Avoid endless loop
 			if parse.RENumberedWithNoExtension.MatchString(task.Task) {
 				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedWithNoExtension.String())
 				return
@@ -281,6 +285,8 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			}
 
 			task := tasks[number-1]
+
+			// Avoid endless loop
 			if parse.RENumberedBasename.MatchString(task.Task) {
 				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedBasename.String())
 				return
@@ -312,6 +318,8 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			}
 
 			task := tasks[number-1]
+
+			// Avoid endless loop
 			if parse.RENumberedDirname.MatchString(task.Task) {
 				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedDirname.String())
 				return
@@ -341,6 +349,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			}
 			task := tasks[number-1]
 
+			// Avoid endless loop
 			if parse.RENumberedBasenameNoExtension.MatchString(task.Task) {
 				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedBasenameNoExtension.String())
 				return
