@@ -9,3 +9,15 @@ argument parsing.
 What is likely to be implemented is substitution for incoming lists, numbered substitution and shuffling. The `--link`
 option may or may not be implemented, although I have to understand it better before making a decision. Perl regular
 expressions will not be implemented, though perl can be invoked in the command part along with things like sed and awk.
+
+## Usage
+
+### Arguments
+
+```sh
+$ goparallel echo "Argument: {}" -a {1..4}
+Argument: 1
+Argument: 4
+Argument: 2
+Argument: 3
+```

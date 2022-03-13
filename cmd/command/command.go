@@ -42,6 +42,7 @@ func RunCommand(c Command) {
 	sem := semaphore.NewWeighted(int64(c.Concurrency))
 
 	var wg sync.WaitGroup
+	wg.Add(c.TaskListSet.Max())
 	for i := 0; i < c.TaskListSet.Max(); i++ {
 		c2 := c.Copy()
 		err := c2.Prepare()
@@ -54,11 +55,11 @@ func RunCommand(c Command) {
 			panic(err)
 		}
 		go func() {
-			wg.Add(1)
 			defer sem.Release(1)
 			defer wg.Done()
 			_, _, err = c2.Execute()
 			if err != nil {
+				wg.Done()
 				panic(err)
 			}
 		}()
@@ -132,10 +133,10 @@ func (c *Command) Prepare() (err error) {
 		return
 	}
 
-	if !isValid(tasks[0].Task) {
-		err = errors.New("invalid file")
-		return
-	}
+	// if !isValid(tasks[0].Task) {
+	// 	err = errors.New("invalid file")
+	// 	return
+	// }
 
 	defaultTask := tasks[0]
 	// Input line
