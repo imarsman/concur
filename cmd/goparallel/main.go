@@ -24,7 +24,7 @@ func init() {
 
 // callArgs command line arguments
 var callArgs struct {
-	Command   []string `arg:"positional"`
+	Command   string   `arg:"positional"`
 	Arguments []string `arg:"-a,--arguments,separate"`
 	Files     []string `arg:"-f,--files,separate"`
 	DryRun    bool     `arg:"-d,--dry-run"`
@@ -114,7 +114,8 @@ func main() {
 
 	// Define command to run
 	var c = command.NewCommand(
-		strings.Join(callArgs.Command, " "),
+		// strings.Join(callArgs.Command, " "),
+		callArgs.Command,
 		&taskListSet,
 		callArgs.Slots,
 		dryRun,
