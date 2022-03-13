@@ -1,6 +1,9 @@
 package command
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/imarsman/goparallel/cmd/tasks"
@@ -11,7 +14,7 @@ func TestCommand(t *testing.T) {
 	is := is.New(t)
 
 	command := Command{}
-	command.Value = "ls -ltr"
+	command.Command = "ls -ltr"
 	so, se, err := command.Execute()
 	is.NoErr(err)
 
@@ -19,22 +22,32 @@ func TestCommand(t *testing.T) {
 }
 
 func TestPrepare(t *testing.T) {
-	cOrig := NewCommand("ls {}")
+	is := is.New(t)
+	threads := runtime.NumCPU()
 
-	c := cOrig.Copy()
-	c2 := cOrig.Copy()
+	wd, err := os.Getwd()
+	is.NoErr(err)
+	t.Log(os.Getwd())
 
 	taskList := tasks.NewTaskList()
-	taskList.Add("command_test.go")
-	taskList.Add("command.go")
+	taskList.Add(filepath.Join(wd, "./command_test.go"))
+	taskList.Add(filepath.Join(wd, "./command.go"))
+	taskList2 := tasks.NewTaskList()
+	taskList2.Add(filepath.Join(wd, "a", "b", "c", "d"))
 
-	task1 := tasks.NewTask("command_test.go")
-	task2 := tasks.NewTask("command.go")
+	taskListSet := tasks.NewTaskListSet()
+	taskListSet.Add(taskList)
+	taskListSet.Add(taskList2)
 
-	c.Prepare(task1)
-	c2.Prepare(task2)
+	comands := []string{"full path: {}", "input line no ext: {.}", "filename: {/}", "path {//}", "fn no path: {/.}"}
 
-	t.Logf("cOrig %+v", cOrig)
-	t.Logf("c %+v", c)
-	t.Logf("c2 %+v", c2)
+	for i := 0; i < taskListSet.Max(); i++ {
+		for _, v := range comands {
+			c := NewCommand(v, &taskListSet, threads)
+			err := c.Prepare(taskListSet.Sequence)
+			is.NoErr(err)
+
+			t.Log("start", v, "c command", c.Command)
+		}
+	}
 }

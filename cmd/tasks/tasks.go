@@ -3,6 +3,7 @@ package tasks
 import (
 	"fmt"
 	"math/rand"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,9 +24,9 @@ type TaskList struct {
 	Offset int
 }
 
-func NewTaskList() *TaskList {
+func NewTaskList() TaskList {
 	tl := TaskList{}
-	return &tl
+	return tl
 }
 
 // Add add tasks to a task list
@@ -38,7 +39,7 @@ func (tl *TaskList) Add(tasks ...string) {
 }
 
 // Shuffle shuffle the task lines for a task list
-func (tl *TaskList) Shuffle() {
+func (tl TaskList) Shuffle() {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(tl.Tasks), func(i, j int) { tl.Tasks[i], tl.Tasks[j] = tl.Tasks[j], tl.Tasks[i] })
 }
@@ -46,37 +47,76 @@ func (tl *TaskList) Shuffle() {
 // TaskListSet a set of task lists
 type TaskListSet struct {
 	TaskLists []*TaskList
+	Sequence  int64
+	Offset    int64
 }
 
-func NewTaskListSet() *TaskListSet {
+// NewTaskListSet make a new task list set
+func NewTaskListSet() TaskListSet {
 	tls := TaskListSet{}
 	tls.TaskLists = make([]*TaskList, 0)
+	tls.Sequence = 1
 
-	return &tls
+	return tls
+}
+
+// SequenceIncr increment sequence without lock
+func (tls *TaskListSet) SequenceIncr() {
+	atomic.AddInt64(&tls.Sequence, 1)
+}
+
+// GetSequence get lock free sequence value
+func (tls *TaskListSet) GetSequence() int64 {
+	return atomic.LoadInt64(&tls.Sequence)
 }
 
 // Add add a task list ot the taskSet
-func (ts *TaskListSet) Add(taskList *TaskList) {
-	ts.TaskLists = append(ts.TaskLists, taskList)
+func (tls *TaskListSet) Add(taskList TaskList) {
+	tls.TaskLists = append(tls.TaskLists, &taskList)
 }
 
-// Next treat task list as a circle that loops back to zero
-func (ts *TaskListSet) Next(list int) (task Task, err error) {
+// Max get maximum task list size
+func (tls *TaskListSet) Max() (max int) {
+	for _, v := range tls.TaskLists {
+		if len(v.Tasks) > max {
+			max = len(v.Tasks)
+		}
+	}
+	return
+}
+
+func (tls TaskListSet) NextAll() (tasks []Task, err error) {
+	for i := range tls.TaskLists {
+		var task Task
+		task, err = tls.next(i)
+		if err != nil {
+			return
+		}
+		tasks = append(tasks, task)
+		// fmt.Printf("tasks %+v\n", tasks)
+	}
+
+	return
+}
+
+// next treat task list as a circle that loops back to zero
+func (tls *TaskListSet) next(list int) (task Task, err error) {
 	var taskList *TaskList
-	if list <= len(ts.TaskLists)-1 {
-		taskList = ts.TaskLists[list]
+	if list <= len(tls.TaskLists)-1 {
+		taskList = tls.TaskLists[list]
 	} else {
-		err = fmt.Errorf("list %d out of bounds for %d lists", list, len(ts.TaskLists)-1)
+		err = fmt.Errorf("list %d out of bounds for %d lists", list, len(tls.TaskLists)-1)
 		return
 	}
-	// if taskList.Offset <= len(taskList.Tasks)-1 {
 	task = taskList.Tasks[taskList.Offset]
-	newOffset := taskList.Offset + 1
-	if newOffset > len(taskList.Tasks)-1 {
+	newOffset := taskList.Offset
+	// fmt.Println("new offset", newOffset, len(taskList.Tasks))
+	if newOffset >= len(taskList.Tasks)-1 {
 		taskList.Offset = 0
 	} else {
-		taskList.Offset = newOffset
+		taskList.Offset++
 	}
+	// fmt.Println("task", task, "offset", taskList.Offset)
 
 	return
 }
