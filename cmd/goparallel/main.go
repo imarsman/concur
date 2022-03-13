@@ -96,7 +96,13 @@ func main() {
 		taskListSet.Add(tl)
 	}
 
-	var c = command.NewCommand(strings.Join(callArgs.Command, " "), &taskListSet, callArgs.Slots, dryRun)
-
+	// Define command to run
+	var c = command.NewCommand(
+		strings.Join(callArgs.Command, " "),
+		&taskListSet,
+		callArgs.Slots,
+		dryRun,
+	)
+	// Run command for all items
 	command.RunCommand(c)
 }

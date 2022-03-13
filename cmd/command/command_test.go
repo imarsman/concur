@@ -51,10 +51,11 @@ func TestPrepare(t *testing.T) {
 	for i := 0; i < taskListSet.Max(); i++ {
 		for _, v := range comands {
 			c := NewCommand(v, &taskListSet, 8, true)
-			err := c.Prepare()
+			atEnd, err := c.Prepare()
 			if err != nil {
 
 			}
+			is.True(atEnd == false)
 
 			t.Log("start", v, "c command", c.Command)
 			_, _, err = c.Execute()
@@ -65,8 +66,9 @@ func TestPrepare(t *testing.T) {
 	taskListSet.SequenceReset()
 	for i := 0; i < 20; i++ {
 		c := NewCommand("sequence {#}", &taskListSet, 8, true)
-		err := c.Prepare()
+		atEnd, err := c.Prepare()
 		is.NoErr(err)
+		is.True(atEnd == false)
 
 		t.Log("start", "sequence {#}", "c command", c.Command)
 	}
@@ -74,8 +76,9 @@ func TestPrepare(t *testing.T) {
 	taskListSet.SequenceReset()
 	for i := 0; i < 20; i++ {
 		c := NewCommand("slot number {%}", &taskListSet, 8, true)
-		err := c.Prepare()
+		atEnd, err := c.Prepare()
 		is.NoErr(err)
+		is.True(atEnd == false)
 
 		t.Log("start", "slot number {%}", "c command", c.Command)
 	}

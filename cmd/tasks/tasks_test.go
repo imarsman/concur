@@ -23,8 +23,9 @@ func TestTaskSet(t *testing.T) {
 	t.Logf("Task list set %+v", taskListSet)
 
 	for i := 0; i < 10; i++ {
-		task, err := taskListSet.next(0)
+		task, atEnd, err := taskListSet.next(0)
 		is.NoErr(err)
+		is.True(atEnd == false)
 
 		t.Logf("task %+v", task)
 	}
@@ -41,8 +42,9 @@ func TestTaskSetSequence(t *testing.T) {
 	t.Logf("Task list set %+v", taskListSet)
 
 	for i := 0; i < 10; i++ {
-		task, err := taskListSet.next(0)
+		task, atEnd, err := taskListSet.next(0)
 		is.NoErr(err)
+		is.True(atEnd == false)
 
 		t.Logf("task %+v Sequence %d", task, taskListSet.Sequence)
 		taskListSet.SequenceIncr()

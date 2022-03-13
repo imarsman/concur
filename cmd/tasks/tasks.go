@@ -12,6 +12,7 @@ type Task struct {
 	Task string
 }
 
+// NewTask make a new task
 func NewTask(task string) *Task {
 	t := Task{Task: task}
 
@@ -24,6 +25,7 @@ type TaskList struct {
 	Offset int
 }
 
+// NewTaskList make a new task list
 func NewTaskList() TaskList {
 	tl := TaskList{}
 	return tl
@@ -60,6 +62,16 @@ func NewTaskListSet() TaskListSet {
 	return tls
 }
 
+// SequenceSet set sequence
+// For use with things like {2} where getting extra items is needed.
+func (tls *TaskListSet) SequenceSet(sequence int64) (err error) {
+	if sequence > int64(len(tls.TaskLists)-1) {
+		err = fmt.Errorf("sequence to set %d outside of max %d", len(tls.TaskLists)-1, sequence)
+	}
+	atomic.AddInt64(&tls.Sequence, sequence)
+	return
+}
+
 // SequenceIncr increment sequence without lock
 func (tls *TaskListSet) SequenceIncr() {
 	atomic.AddInt64(&tls.Sequence, 1)
@@ -90,10 +102,11 @@ func (tls *TaskListSet) Max() (max int) {
 	return
 }
 
-func (tls TaskListSet) NextAll() (tasks []Task, err error) {
+// NextAll get next item slice for all tasks item lists
+func (tls TaskListSet) NextAll() (tasks []Task, atEnd bool, err error) {
 	for i := range tls.TaskLists {
 		var task Task
-		task, err = tls.next(i)
+		task, atEnd, err = tls.next(i)
 		if err != nil {
 			return
 		}
@@ -104,7 +117,7 @@ func (tls TaskListSet) NextAll() (tasks []Task, err error) {
 }
 
 // next treat task list as a circle that loops back to zero
-func (tls *TaskListSet) next(list int) (task Task, err error) {
+func (tls *TaskListSet) next(list int) (task Task, atEnd bool, err error) {
 	var taskList *TaskList
 	if list <= len(tls.TaskLists)-1 {
 		taskList = tls.TaskLists[list]
@@ -118,6 +131,9 @@ func (tls *TaskListSet) next(list int) (task Task, err error) {
 		taskList.Offset = 0
 	} else {
 		taskList.Offset++
+	}
+	if taskList.Offset == tls.Max() {
+		atEnd = true
 	}
 
 	return

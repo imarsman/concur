@@ -42,12 +42,27 @@ func RunCommand(c Command) {
 	sem := semaphore.NewWeighted(int64(c.Concurrency))
 
 	var wg sync.WaitGroup
-	wg.Add(c.TaskListSet.Max())
 	for i := 0; i < c.TaskListSet.Max(); i++ {
+		// Add delta of 1 to waitgroup
+		wg.Add(1)
+
+		// Copying
+		// -------
+		// TaskListSet is a pointer so remains.
+		// Command is a string and gets copied to the new one from the incoming
+		// Other attributes are not changed.
 		c2 := c.Copy()
-		err := c2.Prepare()
+
+		atEnd, err := c2.Prepare()
 		if err != nil {
 			fmt.Println(err)
+		}
+		// We have reached the end of the list of input items
+		// This can happen when more than one input item is used in a command.
+		// e.g. echo {1} {2}
+		// This is not implemented yet.
+		if atEnd && i < c.TaskListSet.Max() {
+			break
 		}
 
 		err = sem.Acquire(ctx, 1)
@@ -64,6 +79,8 @@ func RunCommand(c Command) {
 			}
 		}()
 	}
+
+	// Wait for all goroutines to complete
 	wg.Wait()
 }
 
@@ -74,6 +91,7 @@ func NewCommand(value string, taskListSet *tasks.TaskListSet, slots int, dryRun 
 	return c
 }
 
+// is a file valid - not using currently as it will cause un-needed failures
 func isValid(fp string) bool {
 	// Check if file already exists
 	if _, err := os.Stat(fp); err == nil {
@@ -83,21 +101,12 @@ func isValid(fp string) bool {
 	return false
 }
 
-// Copy get copy of a command to avoid overwriting the source copy
+// Copy get copy of a command to avoid overwriting the source copy of the
+// Command attribute
 func (c *Command) Copy() (newCommand Command) {
 	newCommand = *c
-	newCommand.DryRun = c.DryRun
 
 	return newCommand
-}
-
-var mu *sync.Mutex
-
-func (c *Command) print(input string) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	fmt.Println(input)
 }
 
 /**
@@ -117,60 +126,67 @@ func getParams(regEx *regexp.Regexp, input string) (paramsMap map[string]string)
 	return paramsMap
 }
 
-var reNumbered = regexp.MustCompile(`\{(?P<NUMBERED>\d+)\}`)
-var reNumberedWithNoExtension = regexp.MustCompile(`\{(?P<NUMBERED>\d)+\.\}`)
-var reNumberedBasename = regexp.MustCompile(`\{(?P<NUMBERED>\d+)\/\}`)
-var reNumberedDirname = regexp.MustCompile(`\{(?P<NUMBERED>\d+)\/\/\}`)
-var reNumberedBasenameNoExtension = regexp.MustCompile(`\{(?P<NUMBERED>\d+)\/\.\}`)
-
 // Prepare replace placeholders with data from incoming
-func (c *Command) Prepare() (err error) {
+func (c *Command) Prepare() (atEnd bool, err error) {
 	sequence := c.TaskListSet.GetSequence()
 
-	tasks, err := c.TaskListSet.NextAll()
+	tasks, atEnd, err := c.TaskListSet.NextAll()
 	if err != nil {
 		fmt.Println("error")
 		return
 	}
 
+	// This will cause un-needed errors
+	// Properness of outgoing data is the responsibility of the call creator
 	// if !isValid(tasks[0].Task) {
 	// 	err = errors.New("invalid file")
 	// 	return
 	// }
 
 	defaultTask := tasks[0]
+
+	// {}
 	// Input line
-	// /path/to/file.ext interpolated
 	if strings.Contains(c.Command, "{}") {
 		c.Command = strings.ReplaceAll(c.Command, "{}", defaultTask.Task)
 	}
-	// Input line without extension
-	// /path/to/file.ext -> /path/to/file
+
+	// {.}
+	// Input line without extension.
 	if strings.Contains(c.Command, "{.}") {
 		dir := filepath.Dir(defaultTask.Task)
 		base := filepath.Base(defaultTask.Task)
 		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
 		c.Command = strings.ReplaceAll(c.Command, "{.}", filepath.Join(dir, noExtension))
 	}
-	// Basename of input line
-	// /path/to/file.ext -> file.ext
+
+	// {/}
+	// Basename of input line.
 	if strings.Contains(c.Command, "{/}") {
 		c.Command = strings.ReplaceAll(c.Command, "{/}", filepath.Base(defaultTask.Task))
 	}
+
+	// {//}
+	// Dirname of output line.
 	if strings.Contains(c.Command, "{//}") {
 		c.Command = strings.ReplaceAll(c.Command, "{//}", filepath.Dir(defaultTask.Task))
 	}
-	// /path/to/file.ext -> /path/to/file
+
+	// {/.}
+	// Basename of input line without extension.
 	if strings.Contains(c.Command, "{/.}") {
 		base := filepath.Base(defaultTask.Task)
 		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
 		c.Command = strings.ReplaceAll(c.Command, "{/.}", noExtension)
 	}
-	// sequence number for the command
+	// {#}
+	// Sequence number of the job to run.
 	if strings.Contains(c.Command, "{#}") {
-		c.Command = strings.ReplaceAll(c.Command, "{#}", fmt.Sprint(sequence+1))
+		c.Command = strings.ReplaceAll(c.Command, "{#}", fmt.Sprint(sequence))
 	}
-	// slot number for the command
+
+	// {%}
+	// Job slot number.
 	if strings.Contains(c.Command, "{%}") {
 		var slotNumber = c.Concurrency
 		if int64(c.Concurrency) <= sequence {
@@ -182,9 +198,11 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n}
+	// Argument from input source n or the n'th argument.
+	// Note - nth argument handling not implemented.
 	found, number, err := parse.NumberFromToken(parse.RENumbered, c.Command)
 	if err != nil {
-		return err
+		return
 	}
 	if found {
 		if number-1 > len(tasks) {
@@ -195,9 +213,11 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n.}
+	// Argument from input source n or the n'th argument without extension.
+	// Note - nth argument handling not implemented.
 	found, number, err = parse.NumberFromToken(parse.RENumberedWithNoExtension, c.Command)
 	if err != nil {
-		return err
+		return
 	}
 	if found {
 		if number-1 > len(tasks) {
@@ -215,9 +235,11 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n/}
+	// Basename of argument from input source n or the n'th argument.
+	// Note - nth argument handling not implemented.
 	found, number, err = parse.NumberFromToken(parse.RENumberedBasename, c.Command)
 	if err != nil {
-		return err
+		return
 	}
 	if found {
 		if number-1 > len(tasks) {
@@ -230,9 +252,11 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n//}
+	// Dirname of argument from input source n or the n'th argument.
+	// Note - nth argument handling not implemented.
 	found, number, err = parse.NumberFromToken(parse.RENumberedDirname, c.Command)
 	if err != nil {
-		return err
+		return
 	}
 	if found {
 		if number-1 > len(tasks) {
@@ -245,9 +269,11 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	// {n/.}
+	// Basename of argument from input source n or the n'th argument without extension.
+	// Note - nth argument handling not implemented.
 	found, number, err = parse.NumberFromToken(parse.RENumberedBasenameNoExtension, c.Command)
 	if err != nil {
-		return err
+		return
 	}
 	if found {
 		if number-1 > len(tasks) {
@@ -267,6 +293,8 @@ func (c *Command) Prepare() (err error) {
 }
 
 // Execute execute a shell command
+// For now, returns the stdout and stderr.
+// Sends stdout and stderr to system stdout and stderr.
 func (c *Command) Execute() (stdout, stdErr string, err error) {
 	var buffStdOut bytes.Buffer
 	var buffStdErr bytes.Buffer
