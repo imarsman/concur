@@ -65,6 +65,11 @@ func (tls *TaskListSet) SequenceIncr() {
 	atomic.AddInt64(&tls.Sequence, 1)
 }
 
+// SequenceReset reset sequence
+func (tls *TaskListSet) SequenceReset() {
+	atomic.StoreInt64(&tls.Sequence, 0)
+}
+
 // GetSequence get lock free sequence value
 func (tls *TaskListSet) GetSequence() int64 {
 	return atomic.LoadInt64(&tls.Sequence)
@@ -93,7 +98,6 @@ func (tls TaskListSet) NextAll() (tasks []Task, err error) {
 			return
 		}
 		tasks = append(tasks, task)
-		// fmt.Printf("tasks %+v\n", tasks)
 	}
 
 	return
@@ -110,13 +114,11 @@ func (tls *TaskListSet) next(list int) (task Task, err error) {
 	}
 	task = taskList.Tasks[taskList.Offset]
 	newOffset := taskList.Offset
-	// fmt.Println("new offset", newOffset, len(taskList.Tasks))
 	if newOffset >= len(taskList.Tasks)-1 {
 		taskList.Offset = 0
 	} else {
 		taskList.Offset++
 	}
-	// fmt.Println("task", task, "offset", taskList.Offset)
 
 	return
 }

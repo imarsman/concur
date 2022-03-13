@@ -8,10 +8,21 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/imarsman/goparallel/cmd/tasks"
+	"golang.org/x/sync/semaphore"
 )
+
+var slots int
+var sem *semaphore.Weighted
+
+func init() {
+	slots = 8
+	sem = semaphore.NewWeighted(int64(slots))
+}
 
 // Command a command
 type Command struct {
@@ -27,8 +38,8 @@ func RunCommand(c Command) {
 	}
 }
 
-func NewCommand(value string, taskListSet *tasks.TaskListSet, concurrency int) Command {
-	c := Command{Command: value, Concurrency: concurrency, TaskListSet: taskListSet}
+func NewCommand(value string, taskListSet *tasks.TaskListSet) Command {
+	c := Command{Command: value, Concurrency: slots, TaskListSet: taskListSet}
 	return c
 }
 
@@ -48,8 +59,33 @@ func (c *Command) Copy() (newCommand Command) {
 	return newCommand
 }
 
+/**
+ * Parses url with the given regular expression and returns the
+ * group values defined in the expression.
+ *
+ */
+func getParams(regEx *regexp.Regexp, input string) (paramsMap map[string]string) {
+	match := regEx.FindStringSubmatch(input)
+
+	paramsMap = make(map[string]string)
+	for i, name := range regEx.SubexpNames() {
+		if i > 0 && i <= len(match) {
+			paramsMap[name] = match[i]
+		}
+	}
+	return paramsMap
+}
+
+var reNumbered = regexp.MustCompile(`\{(?P<NUMBERED>\d+)\}`)
+var reNumberedWithNoExtension = regexp.MustCompile(`\{(?P<NUMBERED>\d)+\.\}`)
+var reNumberedBasename = regexp.MustCompile(`\{(?P<NUMBERED>\d+)\/\}`)
+var reNumberedDirname = regexp.MustCompile(`\{(?P<NUMBERED>\d+)\/\/\}`)
+var reNumberedBasenameNoExtension = regexp.MustCompile(`\{(?P<NUMBERED>\d+)\/\.\}`)
+
 // Prepare replace placeholders with data from incoming
-func (c *Command) Prepare(sequence int64) (err error) {
+func (c *Command) Prepare() (err error) {
+	sequence := c.TaskListSet.GetSequence()
+
 	tasks, err := c.TaskListSet.NextAll()
 	if err != nil {
 		fmt.Println("error")
@@ -89,18 +125,106 @@ func (c *Command) Prepare(sequence int64) (err error) {
 		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
 		c.Command = strings.ReplaceAll(c.Command, "{/.}", noExtension)
 	}
-	//
+	// sequence number for the command
 	if strings.Contains(c.Command, "{#}") {
-		c.Command = strings.ReplaceAll(c.Command, "{#}", fmt.Sprint(sequence))
+		c.Command = strings.ReplaceAll(c.Command, "{#}", fmt.Sprint(sequence+1))
 	}
-	//
+	// slot number for the command
 	if strings.Contains(c.Command, "{%}") {
 		var slotNumber = c.Concurrency
-		if sequence > int64(c.Concurrency) {
-			slotNumber = int(sequence) % c.Concurrency
+		if int64(c.Concurrency) <= sequence {
+			slotNumber = int(sequence)%c.Concurrency + 1
+		} else {
+			slotNumber = int(sequence) + 1
 		}
 		c.Command = strings.ReplaceAll(c.Command, "{%}", fmt.Sprint(slotNumber))
 	}
+
+	numberedParams := getParams(reNumbered, c.Command)
+	// fmt.Println(numberedParams)
+	if numberedParams["NUMBERED"] != "" {
+		numbered := numberedParams["NUMBERED"]
+		var number int
+		number, err = strconv.Atoi(numbered)
+		if err != nil {
+			return
+		}
+		if number-1 > len(tasks) {
+			err = errors.New("out of range")
+		}
+		task := tasks[number-1]
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), task.Task)
+	}
+
+	// TODO: Implement properly
+	numberedParamsNoExtensionParams := getParams(reNumberedWithNoExtension, c.Command)
+	// fmt.Println(numberedParams)
+	if numberedParams["NUMBERED"] != "" {
+		numbered := numberedParamsNoExtensionParams["NUMBERED"]
+		var number int
+		number, err = strconv.Atoi(numbered)
+		if err != nil {
+			return
+		}
+		if number-1 > len(tasks) {
+			err = errors.New("out of range")
+		}
+		task := tasks[number-1]
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), task.Task)
+	}
+
+	// TODO: Implement properly
+	reNumberedBasenameParams := getParams(reNumberedBasename, c.Command)
+	// fmt.Println(numberedParams)
+	if numberedParams["NUMBERED"] != "" {
+		numbered := reNumberedBasenameParams["NUMBERED"]
+		var number int
+		number, err = strconv.Atoi(numbered)
+		if err != nil {
+			return
+		}
+		if number-1 > len(tasks) {
+			err = errors.New("out of range")
+		}
+		task := tasks[number-1]
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), task.Task)
+	}
+
+	// TODO: Implement properly
+	reNumberedDirnameParams := getParams(reNumberedDirname, c.Command)
+	// fmt.Println(numberedParams)
+	if numberedParams["NUMBERED"] != "" {
+		numbered := reNumberedDirnameParams["NUMBERED"]
+		var number int
+		number, err = strconv.Atoi(numbered)
+		if err != nil {
+			return
+		}
+		if number-1 > len(tasks) {
+			err = errors.New("out of range")
+		}
+		task := tasks[number-1]
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), task.Task)
+	}
+
+	// TODO: Implement properly
+	reNumberedBasenameNoExtensionParams := getParams(reNumberedBasenameNoExtension, c.Command)
+	// fmt.Println(numberedParams)
+	if numberedParams["NUMBERED"] != "" {
+		numbered := reNumberedBasenameNoExtensionParams["NUMBERED"]
+		var number int
+		number, err = strconv.Atoi(numbered)
+		if err != nil {
+			return
+		}
+		if number-1 > len(tasks) {
+			err = errors.New("out of range")
+		}
+		task := tasks[number-1]
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), task.Task)
+	}
+
+	c.TaskListSet.SequenceIncr()
 
 	return
 }

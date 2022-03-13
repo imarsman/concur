@@ -3,7 +3,6 @@ package command
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/imarsman/goparallel/cmd/tasks"
@@ -23,7 +22,6 @@ func TestCommand(t *testing.T) {
 
 func TestPrepare(t *testing.T) {
 	is := is.New(t)
-	threads := runtime.NumCPU()
 
 	wd, err := os.Getwd()
 	is.NoErr(err)
@@ -33,21 +31,48 @@ func TestPrepare(t *testing.T) {
 	taskList.Add(filepath.Join(wd, "./command_test.go"))
 	taskList.Add(filepath.Join(wd, "./command.go"))
 	taskList2 := tasks.NewTaskList()
-	taskList2.Add(filepath.Join(wd, "a", "b", "c", "d"))
+	taskList2.Add("a", "b", "c", "d")
 
 	taskListSet := tasks.NewTaskListSet()
 	taskListSet.Add(taskList)
 	taskListSet.Add(taskList2)
 
-	comands := []string{"full path: {}", "input line no ext: {.}", "filename: {/}", "path {//}", "fn no path: {/.}"}
+	comands := []string{
+		"full path: {} {2}",
+		"input line no ext: {.} {2}",
+		"filename: {/} {2}",
+		"path {//} {2}",
+		"fn no path: {/.} {2}",
+		"sequence {#}",
+		"slot number {%}",
+	}
+	// "numbered item {2}"}
 
 	for i := 0; i < taskListSet.Max(); i++ {
 		for _, v := range comands {
-			c := NewCommand(v, &taskListSet, threads)
-			err := c.Prepare(taskListSet.Sequence)
+			c := NewCommand(v, &taskListSet)
+			err := c.Prepare()
 			is.NoErr(err)
 
 			t.Log("start", v, "c command", c.Command)
 		}
+	}
+
+	taskListSet.SequenceReset()
+	for i := 0; i < 20; i++ {
+		c := NewCommand("sequence {#}", &taskListSet)
+		err := c.Prepare()
+		is.NoErr(err)
+
+		t.Log("start", "sequence {#}", "c command", c.Command)
+	}
+
+	taskListSet.SequenceReset()
+	for i := 0; i < 20; i++ {
+		c := NewCommand("slot number {%}", &taskListSet)
+		err := c.Prepare()
+		is.NoErr(err)
+
+		t.Log("start", "slot number {%}", "c command", c.Command)
 	}
 }
