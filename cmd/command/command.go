@@ -205,11 +205,24 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		return
 	}
 	if found {
-		if number-1 > len(tasks) {
-			err = errors.New("out of range")
+		for {
+			found, number, err = parse.NumberFromToken(parse.RENumbered, c.Command)
+			if err != nil {
+				return
+			}
+			if !found {
+				break
+			}
+			if number-1 > len(tasks) {
+				err = errors.New("out of range")
+			}
+			task := tasks[number-1]
+			if parse.RENumbered.MatchString(task.Task) {
+				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumbered.String())
+				return
+			}
+			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), task.Task)
 		}
-		task := tasks[number-1]
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), task.Task)
 	}
 
 	// {n.}
@@ -220,18 +233,30 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		return
 	}
 	if found {
-		if number-1 > len(tasks) {
-			err = errors.New("out of range")
-			return
+		for {
+			found, number, err = parse.NumberFromToken(parse.RENumberedWithNoExtension, c.Command)
+			if err != nil {
+				return
+			}
+			if !found {
+				break
+			}
+			if number-1 > len(tasks) {
+				err = errors.New("out of range")
+				return
+			}
+			task := tasks[number-1]
+			if parse.RENumberedWithNoExtension.MatchString(task.Task) {
+				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedWithNoExtension.String())
+				return
+			}
+			dir := filepath.Dir(task.Task)
+			base := filepath.Base(task.Task)
+			noExtension := strings.TrimSuffix(base, filepath.Ext(base))
+			replacement := filepath.Join(dir, noExtension)
+
+			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), replacement)
 		}
-		task := tasks[number-1]
-
-		dir := filepath.Dir(task.Task)
-		base := filepath.Base(task.Task)
-		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
-		replacement := filepath.Join(dir, noExtension)
-
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), replacement)
 	}
 
 	// {n/}
@@ -242,13 +267,27 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		return
 	}
 	if found {
-		if number-1 > len(tasks) {
-			err = errors.New("out of range")
-			return
-		}
+		for {
+			found, number, err = parse.NumberFromToken(parse.RENumberedBasename, c.Command)
+			if err != nil {
+				return
+			}
+			if !found {
+				break
+			}
+			if number-1 > len(tasks) {
+				err = errors.New("out of range")
+				return
+			}
 
-		task := tasks[number-1]
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), filepath.Base(task.Task))
+			task := tasks[number-1]
+			if parse.RENumberedBasename.MatchString(task.Task) {
+				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedBasename.String())
+				return
+			}
+
+			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), filepath.Base(task.Task))
+		}
 	}
 
 	// {n//}
@@ -259,13 +298,26 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		return
 	}
 	if found {
-		if number-1 > len(tasks) {
-			err = errors.New("out of range")
-			return
-		}
+		for {
+			found, number, err = parse.NumberFromToken(parse.RENumberedDirname, c.Command)
+			if err != nil {
+				return
+			}
+			if !found {
+				break
+			}
+			if number-1 > len(tasks) {
+				err = errors.New("out of range")
+				return
+			}
 
-		task := tasks[number-1]
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), filepath.Dir(task.Task))
+			task := tasks[number-1]
+			if parse.RENumberedDirname.MatchString(task.Task) {
+				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedDirname.String())
+				return
+			}
+			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), filepath.Dir(task.Task))
+		}
 	}
 
 	// {n/.}
@@ -276,15 +328,29 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		return
 	}
 	if found {
-		if number-1 > len(tasks) {
-			err = errors.New("out of range")
+		for {
+			if number-1 > len(tasks) {
+				err = errors.New("out of range")
+			}
+			found, number, err = parse.NumberFromToken(parse.RENumberedBasenameNoExtension, c.Command)
+			if err != nil {
+				return
+			}
+			if !found {
+				break
+			}
+			task := tasks[number-1]
+
+			if parse.RENumberedBasenameNoExtension.MatchString(task.Task) {
+				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedBasenameNoExtension.String())
+				return
+			}
+
+			base := filepath.Base(task.Task)
+			replacement := strings.TrimSuffix(base, filepath.Ext(base))
+
+			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), replacement)
 		}
-
-		task := tasks[number-1]
-		base := filepath.Base(task.Task)
-		replacement := strings.TrimSuffix(base, filepath.Ext(base))
-
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), replacement)
 	}
 
 	c.TaskListSet.SequenceIncr()

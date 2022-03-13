@@ -65,7 +65,7 @@ func Range(input string) (rng []string, err error) {
 		if err != nil {
 			return
 		}
-		start, err = strconv.Atoi(params["END"])
+		end, err = strconv.Atoi(params["END"])
 		if err != nil {
 			return
 		}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -24,10 +25,11 @@ func init() {
 // callArgs command line arguments
 var callArgs struct {
 	Command   []string `arg:"positional"`
-	Arguments []string `arg:"-a,--arguments"`
+	Arguments []string `arg:"-a,--arguments,separate"`
 	Files     []string `arg:"-f,--files"`
 	DryRun    bool     `arg:"-d,--dry-run"`
 	Slots     int      `arg:"-s,--slots"`
+	Shuffle   bool     `arg:"-S,--shuffle"`
 }
 
 func main() {
@@ -75,25 +77,33 @@ func main() {
 			}
 			taskList.Add(matches...)
 		}
+		if callArgs.Shuffle {
+			taskList.Shuffle()
+		}
 		taskListSet.Add(taskList)
 	}
 
 	if len(callArgs.Arguments) > 0 {
-		tl := tasks.NewTaskList()
 		for _, v := range callArgs.Arguments {
+			taskList := tasks.NewTaskList()
 			if parse.RERange.MatchString(v) {
+				// fmt.Println(v)
 				items, err := parse.Range(v)
 				if err != nil {
+					fmt.Println(err)
 					return
 				}
-				tl.Add(items...)
-
-				continue
+				// fmt.Println("items", items)
+				taskList.Add(items...)
 			} else {
-				tl.Add(v)
+				taskList.Add(v)
 			}
+			if callArgs.Shuffle {
+				taskList.Shuffle()
+			}
+			// fmt.Println("adding", taskList)
+			taskListSet.Add(taskList)
 		}
-		taskListSet.Add(tl)
 	}
 
 	// Define command to run
