@@ -67,3 +67,39 @@ Argument: 9 100
 Argument: 3 100
 Argument: 8 100
 ```
+
+## Benchmarks
+
+Initial benchmarks are encouraging
+
+```sh
+$ time parallel echo "Argument: {}" ::: 1 2 3 4 5 {6..10}
+Argument: 1
+Argument: 4
+Argument: 2
+Argument: 6
+Argument: 5
+Argument: 3
+Argument: 8
+Argument: 7
+Argument: 9
+Argument: 10
+
+parallel echo "Argument: {}" ::: 1 2 3 4 5 {6..10}  0.33s user 0.19s system 241% cpu 0.216 total
+```
+
+```sh
+$ time goparallel echo "Argument: {}" -a '1 2 3 4 5 {6..10}'
+Argument: 8
+Argument: 1
+Argument: 4
+Argument: 5
+Argument: 2
+Argument: 6
+Argument: 3
+Argument: 7
+Argument: 9
+Argument: 10
+
+goparallel echo "Argument: {}" -a '1 2 3 4 5 {6..10}'  0.02s user 0.03s system 176% cpu 0.027 total
+```
