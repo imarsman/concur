@@ -3,7 +3,6 @@ package command
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -251,10 +250,6 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			if !found {
 				break
 			}
-			if number-1 > len(tasks) {
-				err = errors.New("out of range")
-				return
-			}
 
 			if len(tasks) < number {
 				err = fmt.Errorf("task item {%d.} for task list count %d out of range", number, len(tasks))
@@ -293,10 +288,6 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			if !found {
 				break
 			}
-			if number-1 > len(tasks) {
-				err = errors.New("out of range")
-				return
-			}
 
 			if len(tasks) < number {
 				err = fmt.Errorf("task item {%d/} for task list count %d out of range", number, len(tasks))
@@ -332,10 +323,6 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			if !found {
 				break
 			}
-			if number-1 > len(tasks) {
-				err = errors.New("out of range")
-				return
-			}
 
 			if len(tasks) < number {
 				err = fmt.Errorf("task item {%d//} for task list count %d out of range", number, len(tasks))
@@ -364,9 +351,6 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 	}
 	if found {
 		for {
-			if number-1 > len(tasks) {
-				err = errors.New("out of range")
-			}
 			found, number, err = parse.NumberFromToken(parse.RENumberedBasenameNoExtension, c.Command)
 			if err != nil {
 				return
