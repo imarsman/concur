@@ -27,6 +27,7 @@ Argument: 3
 ```
 
 Argument lists can be specified separated by spaces
+
 ```sh
 $ goparallel echo "Argument: {}" -a "1 2 3 4"
 Argument: 1
@@ -35,7 +36,21 @@ Argument: 2
 Argument: 3
 ```
 
+Argument lists can include literals and ranges
 
+```sh
+$ goparallel echo "Argument: {}" -a '1 2 3 4 5 {6..10}'
+Argument: 7
+Argument: 2
+Argument: 6
+Argument: 4
+Argument: 5
+Argument: 1
+Argument: 3
+Argument: 8
+Argument: 10
+Argument: 9
+```
 
 Shell calls can be made to create lists
 
