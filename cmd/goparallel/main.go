@@ -69,39 +69,45 @@ func main() {
 	}
 
 	if len(callArgs.Files) > 0 {
-		taskList := tasks.NewTaskList()
 		for _, v := range callArgs.Files {
-			matches, err := filepath.Glob(v)
-			if err != nil {
-				return
+			taskList := tasks.NewTaskList()
+			parts := strings.Split(v, " ")
+			for _, part := range parts {
+				part = strings.TrimSpace(part)
+
+				matches, err := filepath.Glob(part)
+				if err != nil {
+					return
+				}
+				if callArgs.Shuffle {
+					taskList.Shuffle()
+				}
+				taskList.Add(matches...)
 			}
-			taskList.Add(matches...)
+			taskListSet.Add(taskList)
 		}
-		if callArgs.Shuffle {
-			taskList.Shuffle()
-		}
-		taskListSet.Add(taskList)
 	}
 
 	if len(callArgs.Arguments) > 0 {
 		for _, v := range callArgs.Arguments {
+			parts := strings.Split(v, " ")
 			taskList := tasks.NewTaskList()
-			if parse.RERange.MatchString(v) {
-				// fmt.Println(v)
-				items, err := parse.Range(v)
-				if err != nil {
-					fmt.Println(err)
-					return
+			for _, part := range parts {
+				part = strings.TrimSpace(part)
+				if parse.RERange.MatchString(part) {
+					items, err := parse.Range(part)
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
+					taskList.Add(items...)
+				} else {
+					taskList.Add(part)
 				}
-				// fmt.Println("items", items)
-				taskList.Add(items...)
-			} else {
-				taskList.Add(v)
+				if callArgs.Shuffle {
+					taskList.Shuffle()
+				}
 			}
-			if callArgs.Shuffle {
-				taskList.Shuffle()
-			}
-			// fmt.Println("adding", taskList)
 			taskListSet.Add(taskList)
 		}
 	}

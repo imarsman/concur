@@ -223,7 +223,10 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumbered.String())
 				return
 			}
-			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), task.Task)
+
+			replacement := task.Task
+
+			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), replacement)
 		}
 	}
 
@@ -248,16 +251,16 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				return
 			}
 			task := tasks[number-1]
-
-			// Avoid endless loop
-			if parse.RENumberedWithNoExtension.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedWithNoExtension.String())
-				return
-			}
 			dir := filepath.Dir(task.Task)
 			base := filepath.Base(task.Task)
 			noExtension := strings.TrimSuffix(base, filepath.Ext(base))
 			replacement := filepath.Join(dir, noExtension)
+
+			// Avoid endless loop
+			if parse.RENumberedWithNoExtension.MatchString(task.Task) {
+				err = fmt.Errorf("item %s matches regular expression %s", replacement, parse.RENumberedWithNoExtension.String())
+				return
+			}
 
 			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), replacement)
 		}
@@ -285,14 +288,15 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			}
 
 			task := tasks[number-1]
+			replacement := filepath.Base(task.Task)
 
 			// Avoid endless loop
 			if parse.RENumberedBasename.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedBasename.String())
+				err = fmt.Errorf("item %s matches regular expression %s", replacement, parse.RENumberedBasename.String())
 				return
 			}
 
-			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), filepath.Base(task.Task))
+			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), replacement)
 		}
 	}
 
@@ -318,12 +322,14 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			}
 
 			task := tasks[number-1]
+			replacent := filepath.Dir(task.Task)
 
 			// Avoid endless loop
 			if parse.RENumberedDirname.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedDirname.String())
+				err = fmt.Errorf("item %s matches regular expression %s", task.Task, replacent)
 				return
 			}
+
 			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), filepath.Dir(task.Task))
 		}
 	}
@@ -348,15 +354,14 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 			task := tasks[number-1]
+			base := filepath.Base(task.Task)
+			replacement := strings.TrimSuffix(base, filepath.Ext(base))
 
 			// Avoid endless loop
 			if parse.RENumberedBasenameNoExtension.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumberedBasenameNoExtension.String())
+				err = fmt.Errorf("item %s matches regular expression %s", replacement, parse.RENumberedBasenameNoExtension.String())
 				return
 			}
-
-			base := filepath.Base(task.Task)
-			replacement := strings.TrimSuffix(base, filepath.Ext(base))
 
 			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), replacement)
 		}

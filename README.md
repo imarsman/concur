@@ -14,10 +14,30 @@ expressions will not be implemented, though perl can be invoked in the command p
 
 ### Arguments
 
+Separate lists of arguments need to be quoted.
+
+Simple sequences are supported
+
 ```sh
-$ goparallel echo "Argument: {}" -a {1..4}
+$ goparallel echo "Argument: {}" -a "{1..4}"
 Argument: 1
 Argument: 4
 Argument: 2
 Argument: 3
+```
+
+Shell calls can be made to create lists
+
+```sh
+goparallel echo "Argument: {1} {2}" -a "{0..9}" -a "$(echo {100..199})"
+Argument: 1 100
+Argument: 4 100
+Argument: 5 100
+Argument: 0 100
+Argument: 6 100
+Argument: 2 100
+Argument: 7 100
+Argument: 9 100
+Argument: 3 100
+Argument: 8 100
 ```
