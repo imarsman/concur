@@ -141,7 +141,8 @@ func (c *Command) Prepare() (err error) {
 	}
 
 	numberedParams := getParams(reNumbered, c.Command)
-	// fmt.Println(numberedParams)
+
+	// {n}
 	if numberedParams["NUMBERED"] != "" {
 		numbered := numberedParams["NUMBERED"]
 		var number int
@@ -156,9 +157,8 @@ func (c *Command) Prepare() (err error) {
 		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), task.Task)
 	}
 
-	// TODO: Implement properly
+	// {n.}
 	numberedParamsNoExtensionParams := getParams(reNumberedWithNoExtension, c.Command)
-	// fmt.Println(numberedParams)
 	if numberedParams["NUMBERED"] != "" {
 		numbered := numberedParamsNoExtensionParams["NUMBERED"]
 		var number int
@@ -170,12 +170,17 @@ func (c *Command) Prepare() (err error) {
 			err = errors.New("out of range")
 		}
 		task := tasks[number-1]
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), task.Task)
+
+		dir := filepath.Dir(task.Task)
+		base := filepath.Base(task.Task)
+		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
+		replacement := filepath.Join(dir, noExtension)
+
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), replacement)
 	}
 
-	// TODO: Implement properly
+	// {n/}
 	reNumberedBasenameParams := getParams(reNumberedBasename, c.Command)
-	// fmt.Println(numberedParams)
 	if numberedParams["NUMBERED"] != "" {
 		numbered := reNumberedBasenameParams["NUMBERED"]
 		var number int
@@ -186,13 +191,13 @@ func (c *Command) Prepare() (err error) {
 		if number-1 > len(tasks) {
 			err = errors.New("out of range")
 		}
+
 		task := tasks[number-1]
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), task.Task)
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), filepath.Base(task.Task))
 	}
 
-	// TODO: Implement properly
+	// {n//}
 	reNumberedDirnameParams := getParams(reNumberedDirname, c.Command)
-	// fmt.Println(numberedParams)
 	if numberedParams["NUMBERED"] != "" {
 		numbered := reNumberedDirnameParams["NUMBERED"]
 		var number int
@@ -203,13 +208,13 @@ func (c *Command) Prepare() (err error) {
 		if number-1 > len(tasks) {
 			err = errors.New("out of range")
 		}
+
 		task := tasks[number-1]
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), task.Task)
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), filepath.Dir(task.Task))
 	}
 
-	// TODO: Implement properly
+	// {n/.}
 	reNumberedBasenameNoExtensionParams := getParams(reNumberedBasenameNoExtension, c.Command)
-	// fmt.Println(numberedParams)
 	if numberedParams["NUMBERED"] != "" {
 		numbered := reNumberedBasenameNoExtensionParams["NUMBERED"]
 		var number int
@@ -220,8 +225,12 @@ func (c *Command) Prepare() (err error) {
 		if number-1 > len(tasks) {
 			err = errors.New("out of range")
 		}
+
 		task := tasks[number-1]
-		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), task.Task)
+		base := filepath.Base(task.Task)
+		replacement := strings.TrimSuffix(base, filepath.Ext(base))
+
+		c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), replacement)
 	}
 
 	c.TaskListSet.SequenceIncr()
