@@ -37,7 +37,7 @@ type Command struct {
 }
 
 // RunCommand run all items in task lists against RunCommand
-func RunCommand(c Command) {
+func RunCommand(c Command) (err error) {
 	ctx := context.TODO()
 	sem := semaphore.NewWeighted(int64(c.Concurrency))
 
@@ -53,9 +53,10 @@ func RunCommand(c Command) {
 		// Other attributes are not changed.
 		c2 := c.Copy()
 
-		atEnd, err := c2.Prepare()
+		var atEnd bool
+		atEnd, err = c2.Prepare()
 		if err != nil {
-			fmt.Println(err)
+			return
 		}
 		// We have reached the end of the list of input items
 		// This can happen when more than one input item is used in a command.
@@ -82,6 +83,8 @@ func RunCommand(c Command) {
 
 	// Wait for all goroutines to complete
 	wg.Wait()
+
+	return
 }
 
 // NewCommand create a new command struct instance
@@ -213,9 +216,11 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			if !found {
 				break
 			}
-			if number-1 > len(tasks) {
-				err = errors.New("out of range")
+			if len(tasks) < number {
+				err = fmt.Errorf("task item {%d} for task list count %d out of range", number, len(tasks))
+				return
 			}
+
 			task := tasks[number-1]
 
 			// Avoid endless loop
@@ -250,6 +255,12 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				err = errors.New("out of range")
 				return
 			}
+
+			if len(tasks) < number {
+				err = fmt.Errorf("task item {%d.} for task list count %d out of range", number, len(tasks))
+				return
+			}
+
 			task := tasks[number-1]
 			dir := filepath.Dir(task.Task)
 			base := filepath.Base(task.Task)
@@ -287,6 +298,11 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				return
 			}
 
+			if len(tasks) < number {
+				err = fmt.Errorf("task item {%d/} for task list count %d out of range", number, len(tasks))
+				return
+			}
+
 			task := tasks[number-1]
 			replacement := filepath.Base(task.Task)
 
@@ -318,6 +334,11 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			}
 			if number-1 > len(tasks) {
 				err = errors.New("out of range")
+				return
+			}
+
+			if len(tasks) < number {
+				err = fmt.Errorf("task item {%d//} for task list count %d out of range", number, len(tasks))
 				return
 			}
 
@@ -353,6 +374,12 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			if !found {
 				break
 			}
+
+			if len(tasks) < number {
+				err = fmt.Errorf("task item {%d/.} for task list count %d out of range", number, len(tasks))
+				return
+			}
+
 			task := tasks[number-1]
 			base := filepath.Base(task.Task)
 			replacement := strings.TrimSuffix(base, filepath.Ext(base))

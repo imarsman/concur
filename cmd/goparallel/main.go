@@ -26,7 +26,7 @@ func init() {
 var callArgs struct {
 	Command   []string `arg:"positional"`
 	Arguments []string `arg:"-a,--arguments,separate"`
-	Files     []string `arg:"-f,--files"`
+	Files     []string `arg:"-f,--files,separate"`
 	DryRun    bool     `arg:"-d,--dry-run"`
 	Slots     int      `arg:"-s,--slots"`
 	Shuffle   bool     `arg:"-S,--shuffle"`
@@ -50,8 +50,8 @@ func main() {
 
 	taskListSet := tasks.NewTaskListSet()
 
-	stdinItems := []string{}
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		stdinItems := []string{}
 		var scanner = bufio.NewScanner(os.Stdin)
 		// Tell scanner to scan by lines.
 		scanner.Split(bufio.ScanLines)
@@ -120,5 +120,9 @@ func main() {
 		dryRun,
 	)
 	// Run command for all items
-	command.RunCommand(c)
+	err := command.RunCommand(c)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
