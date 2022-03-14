@@ -55,6 +55,20 @@ count 817 /var/log/fsck_apfs.log
 count 140367 /var/log/install.log
 ```
 
+```sh
+$ ls -1 /var/log/*log | goparallel "echo count \$(wc -l {1})"
+count 32 /var/log/fsck_apfs_error.log
+count 432 /var/log/acroUpdaterTools.log
+count 524 /var/log/system.log
+count 395 /var/log/wifi.log
+count 357 /var/log/fsck_hfs.log
+count 39 /var/log/shutdown_monitor.log
+count 817 /var/log/fsck_apfs.log
+count 140367 /var/log/install.log
+```
+
+**Note** that the same result can be obtained without escaping by using single quotes around the command.
+
 ### Arguments
 
 Lists in arguments **need to be quoted**. Lists are split up separately.
