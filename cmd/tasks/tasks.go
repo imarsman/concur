@@ -48,7 +48,9 @@ func (tl TaskList) Shuffle() {
 
 // TaskListSet a set of task lists
 type TaskListSet struct {
+	StdInList *TaskList
 	TaskLists []*TaskList
+	ArgsLists []*TaskList
 	Sequence  int64
 	Offset    int64
 }
@@ -56,7 +58,10 @@ type TaskListSet struct {
 // NewTaskListSet make a new task list set
 func NewTaskListSet() TaskListSet {
 	tls := TaskListSet{}
+	stdInList := NewTaskList()
+	tls.StdInList = &stdInList
 	tls.TaskLists = make([]*TaskList, 0)
+	tls.ArgsLists = make([]*TaskList, 0)
 	tls.Sequence = 1
 
 	return tls
@@ -87,9 +92,19 @@ func (tls *TaskListSet) GetSequence() int64 {
 	return atomic.LoadInt64(&tls.Sequence)
 }
 
-// Add add a task list ot the taskSet
-func (tls *TaskListSet) Add(taskList TaskList) {
+// AddTaskList add a task list ot the taskSet
+func (tls *TaskListSet) AddTaskList(taskList TaskList) {
 	tls.TaskLists = append(tls.TaskLists, &taskList)
+}
+
+// AddArgList add a task list ot the taskSet
+func (tls *TaskListSet) AddArgList(taskList TaskList) {
+	tls.ArgsLists = append(tls.ArgsLists, &taskList)
+}
+
+// SetStdInList set the stdin list
+func (tls *TaskListSet) SetStdInList(taskList *TaskList) {
+	tls.StdInList = taskList
 }
 
 // Max get maximum task list size
@@ -99,6 +114,15 @@ func (tls *TaskListSet) Max() (max int) {
 			max = len(v.Tasks)
 		}
 	}
+	if len(tls.StdInList.Tasks) > max {
+		max = len(tls.StdInList.Tasks)
+	}
+	for _, v := range tls.ArgsLists {
+		if len(v.Tasks) > max {
+			max = len(v.Tasks)
+		}
+	}
+
 	return
 }
 
@@ -107,6 +131,23 @@ func (tls TaskListSet) NextAll() (tasks []Task, atEnd bool, err error) {
 	for i := range tls.TaskLists {
 		var task Task
 		task, atEnd, err = tls.next(i)
+		if err != nil {
+			return
+		}
+		tasks = append(tasks, task)
+	}
+	for i := range tls.ArgsLists {
+		var task Task
+		task, atEnd, err = tls.next(i)
+		if err != nil {
+			return
+		}
+		tasks = append(tasks, task)
+	}
+	if len(tls.StdInList.Tasks) > 0 {
+		var tl = tls.StdInList
+		var task Task
+		task, atEnd, err = tl.next()
 		if err != nil {
 			return
 		}
@@ -133,6 +174,22 @@ func (tls *TaskListSet) next(list int) (task Task, atEnd bool, err error) {
 		taskList.Offset++
 	}
 	if taskList.Offset == tls.Max() {
+		atEnd = true
+	}
+
+	return
+}
+
+// next treat task list as a circle that loops back to zero
+func (tl *TaskList) next() (task Task, atEnd bool, err error) {
+	task = tl.Tasks[tl.Offset]
+	newOffset := tl.Offset
+	if newOffset >= len(tl.Tasks)-1 {
+		tl.Offset = 0
+	} else {
+		tl.Offset++
+	}
+	if tl.Offset == len(tl.Tasks) {
 		atEnd = true
 	}
 
