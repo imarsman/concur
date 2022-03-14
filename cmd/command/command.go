@@ -66,6 +66,11 @@ func RunCommand(c Command) (err error) {
 			break
 		}
 
+		err = sem.Acquire(ctx, 1)
+		if err != nil {
+			panic(err)
+		}
+
 		var run = func() {
 			defer sem.Release(1)
 			defer wg.Done()
@@ -76,10 +81,6 @@ func RunCommand(c Command) (err error) {
 			}
 		}
 
-		err = sem.Acquire(ctx, 1)
-		if err != nil {
-			panic(err)
-		}
 		// Run in order (slower) or in parallel
 		if c.Ordered {
 			run()
