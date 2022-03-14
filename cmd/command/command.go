@@ -33,6 +33,7 @@ type Command struct {
 	Concurrency int
 	TaskListSet *tasks.TaskListSet
 	DryRun      bool
+	Ordered     bool
 }
 
 // RunCommand run all items in task lists against RunCommand
@@ -65,11 +66,7 @@ func RunCommand(c Command) (err error) {
 			break
 		}
 
-		err = sem.Acquire(ctx, 1)
-		if err != nil {
-			panic(err)
-		}
-		go func() {
+		var run = func() {
 			defer sem.Release(1)
 			defer wg.Done()
 			_, _, err = c2.Execute()
@@ -77,7 +74,18 @@ func RunCommand(c Command) (err error) {
 				wg.Done()
 				panic(err)
 			}
-		}()
+		}
+
+		err = sem.Acquire(ctx, 1)
+		if err != nil {
+			panic(err)
+		}
+		// Run in order (slower) or in parallel
+		if c.Ordered {
+			run()
+		} else {
+			go run()
+		}
 	}
 
 	// Wait for all goroutines to complete
@@ -87,8 +95,8 @@ func RunCommand(c Command) (err error) {
 }
 
 // NewCommand create a new command struct instance
-func NewCommand(value string, taskListSet *tasks.TaskListSet, slots int, dryRun bool) Command {
-	c := Command{Command: value, Concurrency: slots, TaskListSet: taskListSet, DryRun: dryRun}
+func NewCommand(value string, taskListSet *tasks.TaskListSet, slots int, dryRun bool, ordered bool) Command {
+	c := Command{Command: value, Concurrency: slots, TaskListSet: taskListSet, DryRun: dryRun, Ordered: ordered}
 
 	return c
 }
