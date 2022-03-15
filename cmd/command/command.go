@@ -431,10 +431,10 @@ func (c *Command) Execute() (err error) {
 	errStr := buffStdErr.String()
 
 	if outStr != "" {
-		c.print(outStr)
+		c.print(os.Stdout, outStr)
 	}
 	if errStr != "" {
-		c.print(errStr)
+		c.print(os.Stderr, errStr)
 	}
 
 	return
@@ -442,9 +442,10 @@ func (c *Command) Execute() (err error) {
 
 var mu sync.Mutex
 
-func (c *Command) print(str string) {
+// print send to output
+func (c *Command) print(file *os.File, str string) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	fmt.Println(strings.TrimSpace(str))
+	fmt.Fprintln(file, strings.TrimSpace(str))
 }
