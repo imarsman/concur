@@ -14,10 +14,8 @@ func TestCommand(t *testing.T) {
 
 	command := Command{}
 	command.Command = "ls -ltr"
-	so, se, err := command.Execute()
+	err := command.Execute()
 	is.NoErr(err)
-
-	t.Log("stdout", so, "stderr", se)
 }
 
 func TestPrepare(t *testing.T) {
@@ -35,8 +33,8 @@ func TestPrepare(t *testing.T) {
 	taskList2.Add("a", "b", "c", "d") // {0..50}
 
 	taskListSet := tasks.NewTaskListSet()
-	taskListSet.Add(taskList)
-	taskListSet.Add(taskList2)
+	taskListSet.AddTaskList(taskList)
+	taskListSet.AddTaskList(taskList2)
 
 	comands := []string{
 		"echo 'full path: {} {2}'",
@@ -50,7 +48,7 @@ func TestPrepare(t *testing.T) {
 
 	for i := 0; i < taskListSet.Max(); i++ {
 		for _, v := range comands {
-			c := NewCommand(v, &taskListSet, 8, true)
+			c := NewCommand(v, &taskListSet, 8, true, false)
 			atEnd, err := c.Prepare()
 			if err != nil {
 
@@ -58,14 +56,14 @@ func TestPrepare(t *testing.T) {
 			is.True(atEnd == false)
 
 			t.Log("start", v, "c command", c.Command)
-			_, _, err = c.Execute()
+			err = c.Execute()
 			is.NoErr(err)
 		}
 	}
 
 	taskListSet.SequenceReset()
 	for i := 0; i < 20; i++ {
-		c := NewCommand("sequence {#}", &taskListSet, 8, true)
+		c := NewCommand("sequence {#}", &taskListSet, 8, true, false)
 		atEnd, err := c.Prepare()
 		is.NoErr(err)
 		is.True(atEnd == false)
@@ -75,11 +73,11 @@ func TestPrepare(t *testing.T) {
 
 	taskListSet.SequenceReset()
 	for i := 0; i < 20; i++ {
-		c := NewCommand("slot number {%}", &taskListSet, 8, true)
+		c := NewCommand("slot number {%}", &taskListSet, 8, true, false)
 		atEnd, err := c.Prepare()
 		is.NoErr(err)
 		is.True(atEnd == false)
 
-		t.Log("start", "slot number {%}", "c command", c.Command)
+		t.Log("start", "slot number {%}", "c command", c.Command, false)
 	}
 }

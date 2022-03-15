@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -74,10 +73,11 @@ func RunCommand(c Command) (err error) {
 		var run = func() {
 			defer sem.Release(1)
 			defer wg.Done()
-			_, _, err = c2.Execute()
+			err = c2.Execute()
 			if err != nil {
-				wg.Done()
-				panic(err)
+				// wg.Done()
+				fmt.Println("err", err)
+				// panic(err)
 			}
 		}
 
@@ -395,16 +395,19 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 // Execute execute a shell command
 // For now, returns the stdout and stderr.
 // Sends stdout and stderr to system stdout and stderr.
-func (c *Command) Execute() (stdout, stdErr string, err error) {
+// func (c *Command) Execute() (stdout, stdErr string, err error) {
+func (c *Command) Execute() (err error) {
 	var buffStdOut bytes.Buffer
 	var buffStdErr bytes.Buffer
 
-	stdOutMW := io.MultiWriter(os.Stdout, &buffStdOut)
-	stdErrMW := io.MultiWriter(os.Stderr, &buffStdErr)
+	// stdOutMW := io.MultiWriter(os.Stdout, &buffStdOut)
+	// stdErrMW := io.MultiWriter(os.Stderr, &buffStdErr)
 
 	cmd := exec.Command("bash", "-c", c.Command)
-	cmd.Stdout = stdOutMW
-	cmd.Stderr = stdErrMW
+	// cmd.Stdout = stdOutMW
+	// cmd.Stderr = stdErrMW
+	cmd.Stdout = &buffStdOut
+	cmd.Stderr = &buffStdErr
 
 	if !c.DryRun {
 		err = cmd.Run()
@@ -412,11 +415,36 @@ func (c *Command) Execute() (stdout, stdErr string, err error) {
 			return
 		}
 
-		stdout = buffStdOut.String()
-		stdErr = buffStdErr.String()
+		// stdout = buffStdOut.String()
+		// stdErr = buffStdErr.String()
 	} else {
 		fmt.Println(cmd.String())
 	}
 
+	// stdout = buffStdOut.String()
+	// stdErr = buffStdErr.String()
+
+	outStr := buffStdOut.String()
+
+	// fmt.Println("out", strings.TrimSpace(outStr))
+
+	errStr := buffStdErr.String()
+
+	if outStr != "" {
+		c.print(outStr)
+	}
+	if errStr != "" {
+		c.print(errStr)
+	}
+
 	return
+}
+
+var mu sync.Mutex
+
+func (c *Command) print(str string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	fmt.Println(strings.TrimSpace(str))
 }
