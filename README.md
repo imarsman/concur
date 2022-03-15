@@ -41,6 +41,28 @@ $ ls -1 /var/log/*log | goparallel echo "1 {1} 2 {2}" -a "a b c"
 
 ## Usage
 
+Ping some hosts and waith for full output from each before printing.
+
+```sh
+goparallel 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com'
+64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.057 ms
+
+--- 127.0.0.1 ping statistics ---
+1 packets transmitted, 1 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 0.057/0.057/0.057/0.000 ms
+PING cisco.com (72.163.4.185): 56 data bytes
+64 bytes from 72.163.4.185: icmp_seq=0 ttl=239 time=78.342 ms
+
+--- cisco.com ping statistics ---
+1 packets transmitted, 1 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 78.342/78.342/78.342/0.000 ms
+PING ibm.com (184.86.42.71): 56 data bytes
+64 bytes from 184.86.42.71: icmp_seq=0 ttl=56 time=24.171 ms
+
+--- ibm.com ping statistics ---
+1 packets transmitted, 1 packets received, 0.0% packet loss
+```
+
 ### Escaping command shell commands
 
 The command specified can include calls that will be run by goparallel against an input. However, the command will bee
