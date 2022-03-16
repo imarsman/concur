@@ -12,7 +12,7 @@ output to a directory structure.
 
 As currently implemented, goparallel gets lists for input from three distinct sources and in order of source; 
 
-1. from standard input as a set of lines, 
+1. from standard input as a set of lines
 2. from lists of arguments using the -a flag (you can use one or more of these and each will be a separate list)
 3. from the -f flag, which reads lines of files to a set of lines. 
  
@@ -73,6 +73,9 @@ launchd.log shutdown_monitor.log system.log
 - {./} or {1./} - list 1 item bsename of input line without extension or same with list number
 - {#} sequence number of the job
 - {%} job slot number (based on concurrency)
+- {1..10} - a range - specify in `-a` and make sure to quote
+  - sequences can be used too such as `seq 1 10` and `'$({1..10})'` (shell invocation)
+  - multiple sequences can be used and for each `-a` will be added to a task list
 
 I also have to test out and decide what to do with path and file oriented placeholders like {/} and {2/} where the
 pattern is not a path or file. Currently the path and file oriented updates occur. There could be problems with this.
@@ -279,7 +282,7 @@ Slot 1 14 /var/log/shutdown_monitor.log
 
 ## Benchmarks
 
-Initial benchmarks are encouraging
+Initial benchmarks are encouraging, though parallel is written in Perl and does all kinds of cool things.
 
 ```sh
 $ time parallel echo "Argument: {}" ::: 1 2 3 4 5 {6..10}
