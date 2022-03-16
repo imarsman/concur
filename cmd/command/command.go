@@ -217,6 +217,8 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		}
 		c.Command = strings.ReplaceAll(c.Command, "{%}", fmt.Sprint(slotNumber))
 	}
+	// c.TaskListSet.BackUpAll()
+	// tasks, atEnd, err = c.TaskListSet.NextAll()
 
 	// {n}
 	// Argument from input source n or the n'th argument.
@@ -232,27 +234,32 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				return
 			}
 			if !found {
+				fmt.Println("back up all")
+				c.TaskListSet.BackUpAll()
 				break
 			}
 
-			task := tasks[0]
-			if len(c.TaskListSet.TaskLists) == 1 {
-				tasks, atEnd, err = c.TaskListSet.NextAll()
-				if err != nil {
-					fmt.Println("error")
-					return
-				}
-			} else {
-				if len(tasks) < number {
-					err = fmt.Errorf(
-						"task item {%d} for task list count %d out of range",
-						number,
-						len(tasks),
-					)
-					return
-				}
-				task = tasks[number-1]
+			// task := tasks[0]
+			// if len(c.TaskListSet.TaskLists) == 1 {
+			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
+			// 	if err != nil {
+			// 		fmt.Println("error")
+			// 		return
+			// 	}
+			// } else {
+			// 	if len(tasks) < number {
+			// 		err = fmt.Errorf(
+			// 			"task item {%d} for task list count %d out of range",
+			// 			number,
+			// 			len(tasks),
+			// 		)
+			// 		return
+			// 	}
+			if number > len(c.TaskListSet.TaskLists) {
+				break
 			}
+			task := tasks[number-1]
+			// }
 
 			// Avoid endless loop
 			if parse.RENumbered.MatchString(task.Task) {
@@ -287,24 +294,29 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			task := tasks[0]
-			if len(c.TaskListSet.TaskLists) == 1 {
-				tasks, atEnd, err = c.TaskListSet.NextAll()
-				if err != nil {
-					fmt.Println("error")
-					return
-				}
-			} else {
-				if len(tasks) < number {
-					err = fmt.Errorf(
-						"task item {%d.} for task list count %d out of range",
-						number,
-						len(tasks),
-					)
-					return
-				}
-				task = tasks[number-1]
+			// task := tasks[0]
+			// if len(c.TaskListSet.TaskLists) == 1 {
+			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
+			// 	if err != nil {
+			// 		fmt.Println("error")
+			// 		return
+			// 	}
+			// } else {
+			// 	if len(tasks) < number {
+			// 		err = fmt.Errorf(
+			// 			"task item {%d.} for task list count %d out of range",
+			// 			number,
+			// 			len(tasks),
+			// 		)
+			// 		return
+			// 	}
+			// 	task = tasks[number-1]
+			// }
+
+			if number > len(c.TaskListSet.TaskLists) {
+				break
 			}
+			task := tasks[number-1]
 
 			dir := filepath.Dir(task.Task)
 			base := filepath.Base(task.Task)
@@ -338,24 +350,28 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			task := tasks[0]
-			if len(c.TaskListSet.TaskLists) == 1 {
-				tasks, atEnd, err = c.TaskListSet.NextAll()
-				if err != nil {
-					fmt.Println("error")
-					return
-				}
-			} else {
-				if len(tasks) < number {
-					err = fmt.Errorf(
-						"task item {%d/} for task list count %d out of range",
-						number,
-						len(tasks),
-					)
-					return
-				}
-				task = tasks[number-1]
+			// task := tasks[0]
+			// if len(c.TaskListSet.TaskLists) == 1 {
+			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
+			// 	if err != nil {
+			// 		fmt.Println("error")
+			// 		return
+			// 	}
+			// } else {
+			// 	if len(tasks) < number {
+			// 		err = fmt.Errorf(
+			// 			"task item {%d/} for task list count %d out of range",
+			// 			number,
+			// 			len(tasks),
+			// 		)
+			// 		return
+			// 	}
+			// 	task = tasks[number-1]
+			// }
+			if number > len(c.TaskListSet.TaskLists) {
+				break
 			}
+			task := tasks[number-1]
 
 			replacement := filepath.Base(task.Task)
 
@@ -390,24 +406,28 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			task := tasks[0]
-			if len(c.TaskListSet.TaskLists) == 1 {
-				tasks, atEnd, err = c.TaskListSet.NextAll()
-				if err != nil {
-					fmt.Println("error")
-					return
-				}
-			} else {
-				if len(tasks) < number {
-					err = fmt.Errorf(
-						"task item {%d//} for task list count %d out of range",
-						number,
-						len(tasks),
-					)
-					return
-				}
-				task = tasks[number-1]
+			// task := tasks[0]
+			// if len(c.TaskListSet.TaskLists) == 1 {
+			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
+			// 	if err != nil {
+			// 		fmt.Println("error")
+			// 		return
+			// 	}
+			// } else {
+			// 	if len(tasks) < number {
+			// 		err = fmt.Errorf(
+			// 			"task item {%d//} for task list count %d out of range",
+			// 			number,
+			// 			len(tasks),
+			// 		)
+			// 		return
+			// 	}
+			// 	task = tasks[number-1]
+			// }
+			if number > len(c.TaskListSet.TaskLists) {
+				break
 			}
+			task := tasks[number-1]
 
 			replacent := filepath.Dir(task.Task)
 
@@ -441,24 +461,28 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			task := tasks[0]
-			if len(c.TaskListSet.TaskLists) == 1 {
-				tasks, atEnd, err = c.TaskListSet.NextAll()
-				if err != nil {
-					fmt.Println("error")
-					return
-				}
-			} else {
-				if len(tasks) < number {
-					err = fmt.Errorf(
-						"task item {%d/.} for task list count %d out of range",
-						number,
-						len(tasks),
-					)
-					return
-				}
-				task = tasks[number-1]
+			// task := tasks[0]
+			// if len(c.TaskListSet.TaskLists) == 1 {
+			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
+			// 	if err != nil {
+			// 		fmt.Println("error")
+			// 		return
+			// 	}
+			// } else {
+			// 	if len(tasks) < number {
+			// 		err = fmt.Errorf(
+			// 			"task item {%d/.} for task list count %d out of range",
+			// 			number,
+			// 			len(tasks),
+			// 		)
+			// 		return
+			// 	}
+			// 	task = tasks[number-1]
+			// }
+			if number > len(c.TaskListSet.TaskLists) {
+				break
 			}
+			task := tasks[number-1]
 
 			base := filepath.Base(task.Task)
 			replacement := strings.TrimSuffix(base, filepath.Ext(base))

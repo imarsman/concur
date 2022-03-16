@@ -46,24 +46,6 @@ list values 1 4
 list values 2 5
 ```
 
-I have implemented the usage of more than one list item per command if there is only one incoming list. For instance, if
-there is one incoming list and the command contains {1/} {2/} {3/} then two items from the incoming list will be used in
-the command.
-
-```sh
-$ find /var/log/ -type f -name "*log" | goparallel 'echo {1/} {2/} {3/}'
-fsck_apfs_error.log fsck_hfs.log launchd.log
-launchd.log shutdown_monitor.log system.log
-access_log fsck_apfs.log fsck_apfs_error.log
-acroUpdaterTools.log install.log access_log
-system.log wifi.log acroUpdaterTools.log
-access_log fsck_apfs.log fsck_apfs_error.log
-system.log wifi.log acroUpdaterTools.log
-fsck_apfs_error.log fsck_hfs.log launchd.log
-acroUpdaterTools.log install.log access_log
-launchd.log shutdown_monitor.log system.log
-```
-
 ## Tokens
 
 - `{} or {1}` - list 1 item
@@ -86,18 +68,6 @@ One problem is
 I need to ensure that I have done as good a job as possible to allow commands to be escaped. Commands passed to the Go
 code for goparallel first are interpreted by the shell environment (zsh has been used for testing). Some characters such
 as { and } can trigger the shell's parser, necessitating thigs like 'echo {}' instead of just echo {}.
-
-```sh
-$ goparallel 'echo {#} {1/} {2/} {3./}' -a '1 2 3 4 5 6'
-1 1 2 3
-2 5 6 1
-3 3 4 5
-4 1 2 3
-5 5 6 1
-6 3 4 5
-```
-
-The above contains a bug.
 
 It would be most reliable to avoid using path and filename oriented tokens if the incoming data is not relevant for
 that. Results otherwise are unpredictable.
