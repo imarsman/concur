@@ -35,7 +35,7 @@ var RENumberedBasename = regexp.MustCompile(`\{(?P<NUMBER>\d+)\/\}`)
 var RENumberedDirname = regexp.MustCompile(`\{(?P<NUMBER>\d+)\/\/\}`)
 
 // RENumberedBasenameNoExtension number for token indicating basename with no extension
-var RENumberedBasenameNoExtension = regexp.MustCompile(`\{(?P<NUMBER>\d+)\/\.\}`)
+var RENumberedBasenameNoExtension = regexp.MustCompile(`\{(?P<NUMBER>\d+)\.\/\}`)
 
 // RERange regular expression for a range such as {0..9}
 var RERange = regexp.MustCompile(`\{(?P<START>\d+)\.\.(?P<END>\d+)\}`)
