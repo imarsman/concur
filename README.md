@@ -1,45 +1,121 @@
 # goparallel
 
-A parallel workalike in Go.
+A parallel workalike in Go. Actually, parallel is more similar to xargs as implemented.
 
-The [parallel](https://en.wikipedia.org/wiki/GNU_parallel) command is a ridiculously complex and has command line
-arguments that would require the creation of a separate parsing metchanism. Arguments such as "::::" do not work with Go
-argument parsing.
+I came across the parallel command very recently and thought writing a utility along its lines would be a good way to
+explore command execution and goroutines and other concurrent tools such as mutexes and semaphors.
 
 I am working on this code to look into calling executables in parallel using Golang. I am not sure I am invested in
-implementing the combinatorial capabilities of the original parallel tool.
+implementing the combinatorial capabilities of the original parallel tool, although I can see the value of this in
+scientific research (randomized assignment). There are some things which I may or may not implement, such as saving
+output to a directory structure.
 
-What is likely to be implemented is substitution for incoming lists, numbered substitution and shuffling. The `--link`
-option may or may not be implemented, although I have to understand it better before making a decision. Perl regular
-expressions will not be implemented, though perl can be invoked in the command part along with things like sed and awk.
+As currently implemented, goparallel gets lists for input from three distinct sources and in order of source; 
 
-It is clear that the original parallel uses its own conventions. For example
+1. from standard input as a set of lines, 
+2. from lists of arguments using the -a flag (you can use one or more of these and each will be a separate list)
+3. from the -f flag, which reads lines of files to a set of lines. 
+ 
+Basically, the lists are sources of input for commands run. I have kept the {1}, {2} notation from parallel as well as
+the notation used for splitting paths and files into their components. I have not implemented the complex combanitorial
+ordering logic for incoming lists. Lists are processed one item per command and the length of the output in terms of
+commands run is defined by the length of the longest incoming list. Any list that reaches its end before the end of
+command runs is looped back to the first item of that list. As possible useful additions emerge I may add them. Things
+like tying one list's members to a previous one would I think require a different approach.
+
+Given that I am not a researcher carrying out randomized experiments the likely focus for this code will be allowing the
+parallel execution of shell commands and the most likely mode of use I think would be the use of a single incoming list.
+
+## Similarities with parallel
+
+I have implemented the placeholder tokenization such as {} and {1} and {#} along with path and file tokens such as {.}
+and {/}.
+
+I have implemented flags allowing output from commands to be printed as blocks per command or as it it is produced by
+the execution of commands.
+
+I have added a flag to cause tasks lists to be shuffled prior to execution.
+
+I have added the ability to specify the concurrency to be used.
+
+If there are no placeholders in the command to be run they will be added and then replaced by their list values.
 
 ```sh
-$ ls -1 /var/log/*log | parallel echo "1 {1} 2 {2}"
-1 /var/log/fsck_hfs.log 2
-1 /var/log/fsck_apfs.log 2
-1 /var/log/fsck_apfs_error.log 2
-1 /var/log/install.log 2
-1 /var/log/wifi.log 2
-1 /var/log/acroUpdaterTools.log 2
-1 /var/log/shutdown_monitor.log 2
-1 /var/log/system.log 2
+$ goparallel 'echo list values ' -a '1 2' -a '{4..5}'
+list values 1 4
+list values 2 5
 ```
 
+I have implemented the usage of more than one list item per command if there is only one incoming list. For instance, if
+there is one incoming list and the command contains {1/} {2/} {3/} then two items from the incoming list will be used in
+the command.
+
 ```sh
-$ ls -1 /var/log/*log | goparallel echo "1 {1} 2 {2}" -a "a b c"
-1 /var/log/acroUpdaterTools.log 2 a
-1 /var/log/wifi.log 2 b
-1 /var/log/fsck_apfs.log 2 b
-1 /var/log/install.log 2 b
-1 /var/log/fsck_apfs_error.log 2 c
-1 /var/log/shutdown_monitor.log 2 c
-1 /var/log/fsck_hfs.log 2 a
-1 /var/log/system.log 2 a
+$ find /var/log/ -type f -name "*log" | goparallel 'echo {1/} {2/} {3/}'
+fsck_apfs_error.log fsck_hfs.log launchd.log
+launchd.log shutdown_monitor.log system.log
+access_log fsck_apfs.log fsck_apfs_error.log
+acroUpdaterTools.log install.log access_log
+system.log wifi.log acroUpdaterTools.log
+access_log fsck_apfs.log fsck_apfs_error.log
+system.log wifi.log acroUpdaterTools.log
+fsck_apfs_error.log fsck_hfs.log launchd.log
+acroUpdaterTools.log install.log access_log
+launchd.log shutdown_monitor.log system.log
+```
+
+## Tokens
+
+- {} or {1} - list 1 item
+- {.} or {1.} - list 1 item without extension or same with list number
+- {/} or {1/} - list 1 item basename of input line or same with list number
+- {//} or {1//} - list 1 item dirname of output line or same with list number
+- {./} or {1./} - list 1 item bsename of input line without extension or same with list number
+- {#} sequence number of the job
+- {%} job slot number (based on concurrency)
+
+I also have to test out and decide what to do with path and file oriented placeholders like {/} and {2/} where the
+pattern is not a path or file. Currently the path and file oriented updates occur. There could be problems with this.
+
+## Things to implement and work on
+
+I need to ensure that I have done as good a job as possible to allow commands to be escaped. Commands passed to the Go
+code for goparallel first are interpreted by the shell environment (zsh has been used for testing). Some characters such
+as { and } can trigger the shell's parser, necessitating thigs like 'echo {}' instead of just echo {}.
+
+```sh
+$ goparallel 'echo {#} {1/} {2/} {3/}' -a '1 2 3 4 5 6'
+6 3 4 5
+3 3 4 5
+1 1 2 3
+2 5 6 1
+5 5 6 1
+4 1 2 3
 ```
 
 ## Usage
+
+```
+$ goparallel -h
+Usage: goparallel [--arguments ARGUMENTS] [--files FILES] [--dry-run] 
+                  [--slots SLOTS] [--shuffle] [--ordered] [--keep-order] [COMMAND]
+
+Positional arguments:
+  COMMAND
+
+Options:
+  --arguments ARGUMENTS, -a ARGUMENTS
+                         lists of arguments
+  --files FILES, -f FILES
+                         files to read into lines
+  --dry-run, -d          show command to run but don't run
+  --slots SLOTS, -s SLOTS
+                         number of parallel tasks
+  --shuffle, -S          shuffle tasks prior to running
+  --ordered, -o          run tasks in their incoming order
+  --keep-order, -k       don't keep output for calls separate
+  --help, -h             display this help and exit
+```
 
 Ping some hosts and waith for full output from each before printing.
 
