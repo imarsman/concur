@@ -287,7 +287,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			task := tasks[number-1]
+			task := tasks[0]
 			if len(c.TaskListSet.TaskLists) == 1 {
 				tasks, atEnd, err = c.TaskListSet.NextAll()
 				if err != nil {
@@ -469,7 +469,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				return
 			}
 
-			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), replacement)
+			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d./}`, number), replacement)
 		}
 	}
 
