@@ -76,6 +76,7 @@ launchd.log shutdown_monitor.log system.log
 
 I also have to test out and decide what to do with path and file oriented placeholders like {/} and {2/} where the
 pattern is not a path or file. Currently the path and file oriented updates occur. There could be problems with this.
+One problem is 
 
 ## Things to implement and work on
 
@@ -84,14 +85,17 @@ code for goparallel first are interpreted by the shell environment (zsh has been
 as { and } can trigger the shell's parser, necessitating thigs like 'echo {}' instead of just echo {}.
 
 ```sh
-$ goparallel 'echo {#} {1/} {2/} {3/}' -a '1 2 3 4 5 6'
-6 3 4 5
-3 3 4 5
+$ goparallel 'echo {#} {1/} {2/} {3./}' -a '1 2 3 4 5 6'
 1 1 2 3
 2 5 6 1
-5 5 6 1
+3 3 4 5
 4 1 2 3
+5 5 6 1
+6 3 4 5
 ```
+
+It would be most reliable to avoid using path and filename oriented tokens if the incoming data is not relevant for
+that. Results otherwise are unpredictable.
 
 ## Usage
 
@@ -170,11 +174,23 @@ count 140367 /var/log/install.log
 
 **Note** that the same result can be obtained without escaping by using single quotes around the command.
 
+```sh
+$ ls -1 /var/log/*log | goparallel 'echo count $(wc -l {1})'
+count 0 /var/log/fsck_apfs_error.log
+count 294 /var/log/system.log
+count 432 /var/log/acroUpdaterTools.log
+count 432 /var/log/acroUpdaterTools.log
+count 294 /var/log/system.log
+count 0 /var/log/fsck_apfs_error.log
+count 153250 /var/log/install.log
+count 153250 /var/log/install.log
+```
+
 ### Arguments
 
 Lists in arguments **need to be quoted**. Lists are split up separately.
 
-The command to be run does not need to be quoted.
+The command to be run does not need to be quoted unless there are characters like { and `.
 
 e.g. -a "{1..4}", -f "/var/log/*log", -a "1 2 3 4"
 
