@@ -66,14 +66,14 @@ launchd.log shutdown_monitor.log system.log
 
 ## Tokens
 
-- {} or {1} - list 1 item
-- {.} or {1.} - list 1 item without extension or same with list number
-- {/} or {1/} - list 1 item basename of input line or same with list number
-- {//} or {1//} - list 1 item dirname of output line or same with list number
-- {./} or {1./} - list 1 item bsename of input line without extension or same with list number
-- {#} sequence number of the job
-- {%} job slot number (based on concurrency)
-- {1..10} - a range - specify in `-a` and make sure to quote
+- `{} or {1}` - list 1 item
+- `{.} or {1.}` - list 1 item without extension or same with list number
+- `{/} or {1/}` - list 1 item basename of input line or same with list number
+- `{//} or {1//}` - list 1 item dirname of output line or same with list number
+- `{./} or {1./}` - list 1 item bsename of input line without extension or same with list number
+- `{#}` sequence number of the job
+- `{%}` job slot number (based on concurrency)
+- `{1..10}` - a range - specify in `-a` and make sure to quote
   - sequences can be used too such as `seq 1 10` and `'$({1..10})'` (shell invocation)
   - multiple sequences can be used and for each `-a` will be added to a task list
 
