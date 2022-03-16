@@ -97,6 +97,8 @@ $ goparallel 'echo {#} {1/} {2/} {3./}' -a '1 2 3 4 5 6'
 6 3 4 5
 ```
 
+The above contains a bug.
+
 It would be most reliable to avoid using path and filename oriented tokens if the incoming data is not relevant for
 that. Results otherwise are unpredictable.
 
