@@ -16,14 +16,15 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-// var slots int
-// var sem *semaphore.Weighted
-// var ctx context.Context
+// Config config parameters
+type Config struct {
+	Slots     int
+	DryRun    bool
+	Ordered   bool
+	KeepOrder bool
+}
 
 func init() {
-	// slots = 8
-	// ctx = context.TODO()
-	// sem = semaphore.NewWeighted(int64(slots))
 }
 
 // Command a command
@@ -31,8 +32,19 @@ type Command struct {
 	Command     string
 	Concurrency int
 	TaskListSet *tasks.TaskListSet
-	DryRun      bool
-	Ordered     bool
+	Config      Config
+}
+
+// NewCommand create a new command struct instance
+func NewCommand(value string, taskListSet *tasks.TaskListSet, config Config) Command {
+	c := Command{
+		Command:     value,
+		Concurrency: config.Slots,
+		TaskListSet: taskListSet,
+		Config:      config,
+	}
+
+	return c
 }
 
 // RunCommand run all items in task lists against RunCommand
@@ -82,7 +94,7 @@ func RunCommand(c Command) (err error) {
 		}
 
 		// Run in order (slower) or in parallel
-		if c.Ordered {
+		if c.Config.Ordered {
 			run()
 		} else {
 			go run()
@@ -93,13 +105,6 @@ func RunCommand(c Command) (err error) {
 	wg.Wait()
 
 	return
-}
-
-// NewCommand create a new command struct instance
-func NewCommand(value string, taskListSet *tasks.TaskListSet, slots int, dryRun bool, ordered bool) Command {
-	c := Command{Command: value, Concurrency: slots, TaskListSet: taskListSet, DryRun: dryRun, Ordered: ordered}
-
-	return c
 }
 
 // is a file valid - not using currently as it will cause un-needed failures
@@ -139,6 +144,7 @@ func getParams(regEx *regexp.Regexp, input string) (paramsMap map[string]string)
 
 // Prepare replace placeholders with data from incoming
 func (c *Command) Prepare() (atEnd bool, err error) {
+
 	sequence := c.TaskListSet.GetSequence()
 
 	tasks, atEnd, err := c.TaskListSet.NextAll()
@@ -147,14 +153,18 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		return
 	}
 
-	// This will cause un-needed errors
-	// Properness of outgoing data is the responsibility of the call creator
-	// if !isValid(tasks[0].Task) {
-	// 	err = errors.New("invalid file")
-	// 	return
-	// }
-
 	defaultTask := tasks[0]
+
+	if !strings.Contains(c.Command, `{`) {
+		var sb strings.Builder
+		for i := range tasks {
+			_, err = sb.WriteString(fmt.Sprintf("{%d} ", i+1))
+			if err != nil {
+				return
+			}
+		}
+		c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
+	}
 
 	// {}
 	// Input line
@@ -224,16 +234,33 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 			if !found {
 				break
 			}
-			if len(tasks) < number {
-				err = fmt.Errorf("task item {%d} for task list count %d out of range", number, len(tasks))
-				return
-			}
 
-			task := tasks[number-1]
+			task := tasks[0]
+			if len(c.TaskListSet.TaskLists) == 1 {
+				tasks, atEnd, err = c.TaskListSet.NextAll()
+				if err != nil {
+					fmt.Println("error")
+					return
+				}
+			} else {
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				task = tasks[number-1]
+			}
 
 			// Avoid endless loop
 			if parse.RENumbered.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", task.Task, parse.RENumbered.String())
+				err = fmt.Errorf(
+					"item %s matches regular expression %s",
+					task.Task,
+					parse.RENumbered.String(),
+				)
 				return
 			}
 
@@ -260,12 +287,25 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			if len(tasks) < number {
-				err = fmt.Errorf("task item {%d.} for task list count %d out of range", number, len(tasks))
-				return
+			task := tasks[number-1]
+			if len(c.TaskListSet.TaskLists) == 1 {
+				tasks, atEnd, err = c.TaskListSet.NextAll()
+				if err != nil {
+					fmt.Println("error")
+					return
+				}
+			} else {
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d.} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				task = tasks[number-1]
 			}
 
-			task := tasks[number-1]
 			dir := filepath.Dir(task.Task)
 			base := filepath.Base(task.Task)
 			noExtension := strings.TrimSuffix(base, filepath.Ext(base))
@@ -298,17 +338,34 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			if len(tasks) < number {
-				err = fmt.Errorf("task item {%d/} for task list count %d out of range", number, len(tasks))
-				return
+			task := tasks[0]
+			if len(c.TaskListSet.TaskLists) == 1 {
+				tasks, atEnd, err = c.TaskListSet.NextAll()
+				if err != nil {
+					fmt.Println("error")
+					return
+				}
+			} else {
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d/} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				task = tasks[number-1]
 			}
 
-			task := tasks[number-1]
 			replacement := filepath.Base(task.Task)
 
 			// Avoid endless loop
 			if parse.RENumberedBasename.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", replacement, parse.RENumberedBasename.String())
+				err = fmt.Errorf(
+					"item %s matches regular expression %s",
+					replacement,
+					parse.RENumberedBasename.String(),
+				)
 				return
 			}
 
@@ -333,17 +390,33 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			if len(tasks) < number {
-				err = fmt.Errorf("task item {%d//} for task list count %d out of range", number, len(tasks))
-				return
+			task := tasks[0]
+			if len(c.TaskListSet.TaskLists) == 1 {
+				tasks, atEnd, err = c.TaskListSet.NextAll()
+				if err != nil {
+					fmt.Println("error")
+					return
+				}
+			} else {
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d//} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				task = tasks[number-1]
 			}
 
-			task := tasks[number-1]
 			replacent := filepath.Dir(task.Task)
 
 			// Avoid endless loop
 			if parse.RENumberedDirname.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", task.Task, replacent)
+				err = fmt.Errorf(
+					"item %s matches regular expression %s",
+					task.Task, replacent,
+				)
 				return
 			}
 
@@ -368,12 +441,25 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				break
 			}
 
-			if len(tasks) < number {
-				err = fmt.Errorf("task item {%d/.} for task list count %d out of range", number, len(tasks))
-				return
+			task := tasks[0]
+			if len(c.TaskListSet.TaskLists) == 1 {
+				tasks, atEnd, err = c.TaskListSet.NextAll()
+				if err != nil {
+					fmt.Println("error")
+					return
+				}
+			} else {
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d/.} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				task = tasks[number-1]
 			}
 
-			task := tasks[number-1]
 			base := filepath.Base(task.Task)
 			replacement := strings.TrimSuffix(base, filepath.Ext(base))
 
@@ -400,34 +486,24 @@ func (c *Command) Execute() (err error) {
 	var buffStdOut bytes.Buffer
 	var buffStdErr bytes.Buffer
 
-	// stdOutMW := io.MultiWriter(os.Stdout, &buffStdOut)
-	// stdErrMW := io.MultiWriter(os.Stderr, &buffStdErr)
-
 	cmd := exec.Command("bash", "-c", c.Command)
-	// cmd.Stdout = stdOutMW
-	// cmd.Stderr = stdErrMW
+
 	cmd.Stdout = &buffStdOut
 	cmd.Stderr = &buffStdErr
 
-	if !c.DryRun {
+	// If we are on a dry run print out what would be run, otherwise run the command.
+	if !c.Config.DryRun {
 		err = cmd.Run()
 		if err != nil {
 			return
 		}
 
-		// stdout = buffStdOut.String()
-		// stdErr = buffStdErr.String()
 	} else {
 		fmt.Println(cmd.String())
 	}
 
-	// stdout = buffStdOut.String()
-	// stdErr = buffStdErr.String()
-
+	// Make buffers for command output
 	outStr := buffStdOut.String()
-
-	// fmt.Println("out", strings.TrimSpace(outStr))
-
 	errStr := buffStdErr.String()
 
 	if outStr != "" {
@@ -444,8 +520,10 @@ var mu sync.Mutex
 
 // print send to output
 func (c *Command) print(file *os.File, str string) {
-	mu.Lock()
-	defer mu.Unlock()
+	if !c.Config.KeepOrder {
+		mu.Lock()
+		defer mu.Unlock()
+	}
 
 	fmt.Fprintln(file, strings.TrimSpace(str))
 }
