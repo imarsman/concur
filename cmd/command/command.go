@@ -234,8 +234,8 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				return
 			}
 			if !found {
-				fmt.Println("back up all")
-				c.TaskListSet.BackUpAll()
+				// fmt.Println("back up all")
+				// c.TaskListSet.BackUpAll()
 				break
 			}
 

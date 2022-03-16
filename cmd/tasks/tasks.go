@@ -157,28 +157,21 @@ func (tls TaskListSet) NextAll() (tasks []Task, atEnd bool, err error) {
 	return
 }
 
-/*
-Fails
-$ goparallel 'echo {1} {2} {3}' -a '1 2 3' -o
-1 2 3
-2 3 1
-3 1 2
-*/
-
+// BackUpAll is for advancing within a list and that is not working
 func (tls TaskListSet) BackUpAll() (err error) {
 	for i := range tls.TaskLists {
 		var taskList = tls.TaskLists[i]
 		offset := taskList.Offset
-		fmt.Println("offset", offset)
+		// fmt.Println("offset", offset)
 		if offset == len(taskList.Tasks)-1 {
-			fmt.Println("here", taskList.Offset)
+			// fmt.Println("here", taskList.Offset)
 			taskList.Offset = 0
-			fmt.Println("here", taskList.Offset)
+			// fmt.Println("here", taskList.Offset)
 		} else {
 			if offset >= len(taskList.Tasks)-1 {
-				fmt.Println("there", taskList.Offset)
+				// fmt.Println("there", taskList.Offset)
 				offset = len(taskList.Tasks) - 1
-				fmt.Println("there", taskList.Offset)
+				// fmt.Println("there", taskList.Offset)
 			}
 		}
 		// fmt.Println("here", i)
