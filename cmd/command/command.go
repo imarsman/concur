@@ -125,6 +125,22 @@ func (c *Command) Copy() (newCommand Command) {
 	return newCommand
 }
 
+// GetSlotNumber get slot number based on sequence and concurrency
+func (c Command) GetSlotNumber() int64 {
+	var slotNumber = c.Concurrency
+	var sequence = c.TaskListSet.Sequence
+	if int64(c.Concurrency) <= sequence {
+		slotNumber = int(sequence) % c.Concurrency
+	} else {
+		slotNumber = int(sequence)
+	}
+	if slotNumber == 0 {
+		slotNumber = c.Concurrency
+	}
+
+	return sequence
+}
+
 /**
  * Parses url with the given regular expression and returns the
  * group values defined in the expression.
@@ -166,334 +182,305 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
 	}
 
+	var replaceToken = func(pattern string, replace string) {
+		if len(c.TaskListSet.TaskLists) == 1 {
+			for strings.Contains(c.Command, pattern) {
+				c.Command = strings.Replace(c.Command, pattern, replace, 1)
+			}
+		} else {
+			for strings.Contains(c.Command, pattern) {
+				c.Command = strings.ReplaceAll(c.Command, pattern, replace)
+			}
+		}
+	}
+
 	// {}
 	// Input line
-	if strings.Contains(c.Command, "{}") {
-		c.Command = strings.ReplaceAll(c.Command, "{}", defaultTask.Task)
+	if strings.Contains(c.Command, parse.TokenInputLine) {
+		replaceToken(parse.TokenInputLine, defaultTask.Task)
 	}
 
 	// {.}
 	// Input line without extension.
-	if strings.Contains(c.Command, "{.}") {
+	if strings.Contains(c.Command, parse.TokenInputLineNoExtension) {
 		dir := filepath.Dir(defaultTask.Task)
 		base := filepath.Base(defaultTask.Task)
 		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
-		c.Command = strings.ReplaceAll(c.Command, "{.}", filepath.Join(dir, noExtension))
+		replacement := filepath.Join(dir, noExtension)
+
+		replaceToken(parse.TokenInputLineNoExtension, replacement)
 	}
 
 	// {/}
 	// Basename of input line.
-	if strings.Contains(c.Command, "{/}") {
-		c.Command = strings.ReplaceAll(c.Command, "{/}", filepath.Base(defaultTask.Task))
+	if strings.Contains(c.Command, parse.TokenBaseName) {
+		replaceToken(parse.TokenBaseName, filepath.Base(defaultTask.Task))
 	}
 
 	// {//}
 	// Dirname of output line.
-	if strings.Contains(c.Command, "{//}") {
-		c.Command = strings.ReplaceAll(c.Command, "{//}", filepath.Dir(defaultTask.Task))
+	if strings.Contains(c.Command, parse.TokenDirname) {
+		replaceToken(parse.TokenDirname, filepath.Dir(defaultTask.Task))
 	}
 
 	// {/.}
 	// Basename of input line without extension.
-	if strings.Contains(c.Command, "{/.}") {
+	if strings.Contains(c.Command, parse.TokenBaseNameNoExtension) {
 		base := filepath.Base(defaultTask.Task)
 		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
-		c.Command = strings.ReplaceAll(c.Command, "{/.}", noExtension)
+
+		c.Command = strings.ReplaceAll(c.Command, parse.TokenBaseNameNoExtension, noExtension)
 	}
 	// {#}
 	// Sequence number of the job to run.
-	if strings.Contains(c.Command, "{#}") {
-		c.Command = strings.ReplaceAll(c.Command, "{#}", fmt.Sprint(sequence))
+	if strings.Contains(c.Command, parse.TokenSequence) {
+		replaceToken(parse.TokenSequence, fmt.Sprint(sequence))
 	}
 
 	// {%}
 	// Job slot number.
-	if strings.Contains(c.Command, "{%}") {
-		var slotNumber = c.Concurrency
-		if int64(c.Concurrency) <= sequence {
-			slotNumber = int(sequence)%c.Concurrency + 1
-		} else {
-			slotNumber = int(sequence) + 1
+	if strings.Contains(c.Command, parse.TokenSlot) {
+		replaceToken(parse.TokenSlot, fmt.Sprint(c.GetSlotNumber()))
+	}
+
+	if len(c.TaskListSet.TaskLists) > 1 {
+		var found bool
+		var number int
+
+		// {n}
+		// Argument from input source n or the n'th argument.
+		// Note - nth argument handling not implemented.
+		found, number, err = parse.NumberFromToken(parse.RENumbered, c.Command)
+		if err != nil {
+			return false, err
 		}
-		c.Command = strings.ReplaceAll(c.Command, "{%}", fmt.Sprint(slotNumber))
-	}
-	// c.TaskListSet.BackUpAll()
-	// tasks, atEnd, err = c.TaskListSet.NextAll()
+		if found {
+			for {
+				found, number, err = parse.NumberFromToken(parse.RENumbered, c.Command)
+				if err != nil {
+					return
+				}
+				if !found {
+					break
+				}
 
-	// {n}
-	// Argument from input source n or the n'th argument.
-	// Note - nth argument handling not implemented.
-	found, number, err := parse.NumberFromToken(parse.RENumbered, c.Command)
-	if err != nil {
-		return
-	}
-	if found {
-		for {
-			found, number, err = parse.NumberFromToken(parse.RENumbered, c.Command)
-			if err != nil {
-				return
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				if number > len(c.TaskListSet.TaskLists) {
+					break
+				}
+				task := tasks[number-1]
+
+				// Avoid endless loop
+				if parse.RENumbered.MatchString(task.Task) {
+					err = fmt.Errorf(
+						"item %s matches regular expression %s",
+						task.Task,
+						parse.RENumbered.String(),
+					)
+					return
+				}
+
+				replacement := task.Task
+
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), replacement)
 			}
-			if !found {
-				// fmt.Println("back up all")
-				// c.TaskListSet.BackUpAll()
-				break
-			}
-
-			// task := tasks[0]
-			// if len(c.TaskListSet.TaskLists) == 1 {
-			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
-			// 	if err != nil {
-			// 		fmt.Println("error")
-			// 		return
-			// 	}
-			// } else {
-			// 	if len(tasks) < number {
-			// 		err = fmt.Errorf(
-			// 			"task item {%d} for task list count %d out of range",
-			// 			number,
-			// 			len(tasks),
-			// 		)
-			// 		return
-			// 	}
-			if number > len(c.TaskListSet.TaskLists) {
-				break
-			}
-			task := tasks[number-1]
-			// }
-
-			// Avoid endless loop
-			if parse.RENumbered.MatchString(task.Task) {
-				err = fmt.Errorf(
-					"item %s matches regular expression %s",
-					task.Task,
-					parse.RENumbered.String(),
-				)
-				return
-			}
-
-			replacement := task.Task
-
-			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), replacement)
 		}
-	}
 
-	// {n.}
-	// Argument from input source n or the n'th argument without extension.
-	// Note - nth argument handling not implemented.
-	found, number, err = parse.NumberFromToken(parse.RENumberedWithNoExtension, c.Command)
-	if err != nil {
-		return
-	}
-	if found {
-		for {
-			found, number, err = parse.NumberFromToken(parse.RENumberedWithNoExtension, c.Command)
-			if err != nil {
-				return
-			}
-			if !found {
-				break
-			}
-
-			// task := tasks[0]
-			// if len(c.TaskListSet.TaskLists) == 1 {
-			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
-			// 	if err != nil {
-			// 		fmt.Println("error")
-			// 		return
-			// 	}
-			// } else {
-			// 	if len(tasks) < number {
-			// 		err = fmt.Errorf(
-			// 			"task item {%d.} for task list count %d out of range",
-			// 			number,
-			// 			len(tasks),
-			// 		)
-			// 		return
-			// 	}
-			// 	task = tasks[number-1]
-			// }
-
-			if number > len(c.TaskListSet.TaskLists) {
-				break
-			}
-			task := tasks[number-1]
-
-			dir := filepath.Dir(task.Task)
-			base := filepath.Base(task.Task)
-			noExtension := strings.TrimSuffix(base, filepath.Ext(base))
-			replacement := filepath.Join(dir, noExtension)
-
-			// Avoid endless loop
-			if parse.RENumberedWithNoExtension.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", replacement, parse.RENumberedWithNoExtension.String())
-				return
-			}
-
-			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), replacement)
+		// {n.}
+		// Argument from input source n or the n'th argument without extension.
+		// Note - nth argument handling not implemented.
+		found, number, err = parse.NumberFromToken(parse.RENumberedWithNoExtension, c.Command)
+		if err != nil {
+			return
 		}
-	}
+		if found {
+			for {
+				found, number, err = parse.NumberFromToken(parse.RENumberedWithNoExtension, c.Command)
+				if err != nil {
+					return
+				}
+				if !found {
+					break
+				}
 
-	// {n/}
-	// Basename of argument from input source n or the n'th argument.
-	// Note - nth argument handling not implemented.
-	found, number, err = parse.NumberFromToken(parse.RENumberedBasename, c.Command)
-	if err != nil {
-		return
-	}
-	if found {
-		for {
-			found, number, err = parse.NumberFromToken(parse.RENumberedBasename, c.Command)
-			if err != nil {
-				return
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d.} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+
+				if number > len(c.TaskListSet.TaskLists) {
+					break
+				}
+				task := tasks[number-1]
+
+				dir := filepath.Dir(task.Task)
+				base := filepath.Base(task.Task)
+				noExtension := strings.TrimSuffix(base, filepath.Ext(base))
+				replacement := filepath.Join(dir, noExtension)
+
+				// Avoid endless loop
+				if parse.RENumberedWithNoExtension.MatchString(task.Task) {
+					err = fmt.Errorf("item %s matches regular expression %s", replacement, parse.RENumberedWithNoExtension.String())
+					return
+				}
+
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), replacement)
 			}
-			if !found {
-				break
-			}
-
-			// task := tasks[0]
-			// if len(c.TaskListSet.TaskLists) == 1 {
-			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
-			// 	if err != nil {
-			// 		fmt.Println("error")
-			// 		return
-			// 	}
-			// } else {
-			// 	if len(tasks) < number {
-			// 		err = fmt.Errorf(
-			// 			"task item {%d/} for task list count %d out of range",
-			// 			number,
-			// 			len(tasks),
-			// 		)
-			// 		return
-			// 	}
-			// 	task = tasks[number-1]
-			// }
-			if number > len(c.TaskListSet.TaskLists) {
-				break
-			}
-			task := tasks[number-1]
-
-			replacement := filepath.Base(task.Task)
-
-			// Avoid endless loop
-			if parse.RENumberedBasename.MatchString(task.Task) {
-				err = fmt.Errorf(
-					"item %s matches regular expression %s",
-					replacement,
-					parse.RENumberedBasename.String(),
-				)
-				return
-			}
-
-			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), replacement)
 		}
-	}
 
-	// {n//}
-	// Dirname of argument from input source n or the n'th argument.
-	// Note - nth argument handling not implemented.
-	found, number, err = parse.NumberFromToken(parse.RENumberedDirname, c.Command)
-	if err != nil {
-		return
-	}
-	if found {
-		for {
-			found, number, err = parse.NumberFromToken(parse.RENumberedDirname, c.Command)
-			if err != nil {
-				return
-			}
-			if !found {
-				break
-			}
-
-			// task := tasks[0]
-			// if len(c.TaskListSet.TaskLists) == 1 {
-			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
-			// 	if err != nil {
-			// 		fmt.Println("error")
-			// 		return
-			// 	}
-			// } else {
-			// 	if len(tasks) < number {
-			// 		err = fmt.Errorf(
-			// 			"task item {%d//} for task list count %d out of range",
-			// 			number,
-			// 			len(tasks),
-			// 		)
-			// 		return
-			// 	}
-			// 	task = tasks[number-1]
-			// }
-			if number > len(c.TaskListSet.TaskLists) {
-				break
-			}
-			task := tasks[number-1]
-
-			replacent := filepath.Dir(task.Task)
-
-			// Avoid endless loop
-			if parse.RENumberedDirname.MatchString(task.Task) {
-				err = fmt.Errorf(
-					"item %s matches regular expression %s",
-					task.Task, replacent,
-				)
-				return
-			}
-
-			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), filepath.Dir(task.Task))
+		// {n/}
+		// Basename of argument from input source n or the n'th argument.
+		// Note - nth argument handling not implemented.
+		found, number, err = parse.NumberFromToken(parse.RENumberedBasename, c.Command)
+		if err != nil {
+			return
 		}
-	}
+		if found {
+			for {
+				found, number, err = parse.NumberFromToken(parse.RENumberedBasename, c.Command)
+				if err != nil {
+					return
+				}
+				if !found {
+					break
+				}
 
-	// {n/.}
-	// Basename of argument from input source n or the n'th argument without extension.
-	// Note - nth argument handling not implemented.
-	found, number, err = parse.NumberFromToken(parse.RENumberedBasenameNoExtension, c.Command)
-	if err != nil {
-		return
-	}
-	if found {
-		for {
-			found, number, err = parse.NumberFromToken(parse.RENumberedBasenameNoExtension, c.Command)
-			if err != nil {
-				return
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d/} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				if number > len(c.TaskListSet.TaskLists) {
+					break
+				}
+				task := tasks[number-1]
+
+				replacement := filepath.Base(task.Task)
+
+				// Avoid endless loop
+				if parse.RENumberedBasename.MatchString(task.Task) {
+					err = fmt.Errorf(
+						"item %s matches regular expression %s",
+						replacement,
+						parse.RENumberedBasename.String(),
+					)
+					return
+				}
+
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), replacement)
 			}
-			if !found {
-				break
+		}
+
+		// {n//}
+		// Dirname of argument from input source n or the n'th argument.
+		// Note - nth argument handling not implemented.
+		found, number, err = parse.NumberFromToken(parse.RENumberedDirname, c.Command)
+		if err != nil {
+			return
+		}
+		if found {
+			for {
+				found, number, err = parse.NumberFromToken(parse.RENumberedDirname, c.Command)
+				if err != nil {
+					return
+				}
+				if !found {
+					break
+				}
+
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d//} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				if number > len(c.TaskListSet.TaskLists) {
+					break
+				}
+				task := tasks[number-1]
+
+				replacent := filepath.Dir(task.Task)
+
+				// Avoid endless loop
+				if parse.RENumberedDirname.MatchString(task.Task) {
+					err = fmt.Errorf(
+						"item %s matches regular expression %s",
+						task.Task, replacent,
+					)
+					return
+				}
+
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), filepath.Dir(task.Task))
 			}
+		}
 
-			// task := tasks[0]
-			// if len(c.TaskListSet.TaskLists) == 1 {
-			// 	tasks, atEnd, err = c.TaskListSet.NextAll()
-			// 	if err != nil {
-			// 		fmt.Println("error")
-			// 		return
-			// 	}
-			// } else {
-			// 	if len(tasks) < number {
-			// 		err = fmt.Errorf(
-			// 			"task item {%d/.} for task list count %d out of range",
-			// 			number,
-			// 			len(tasks),
-			// 		)
-			// 		return
-			// 	}
-			// 	task = tasks[number-1]
-			// }
-			if number > len(c.TaskListSet.TaskLists) {
-				break
+		// {n/.}
+		// Basename of argument from input source n or the n'th argument without extension.
+		// Note - nth argument handling not implemented.
+		found, number, err = parse.NumberFromToken(parse.RENumberedBasenameNoExtension, c.Command)
+		if err != nil {
+			return
+		}
+		if found {
+			for {
+				found, number, err = parse.NumberFromToken(parse.RENumberedBasenameNoExtension, c.Command)
+				if err != nil {
+					return
+				}
+				if !found {
+					break
+				}
+
+				// task := tasks[0]
+				// if len(c.TaskListSet.TaskLists) == 1 {
+				// 	tasks, atEnd, err = c.TaskListSet.NextAll()
+				// 	if err != nil {
+				// 		fmt.Println("error")
+				// 		return
+				// 	}
+				// } else {
+				if len(tasks) < number {
+					err = fmt.Errorf(
+						"task item {%d/.} for task list count %d out of range",
+						number,
+						len(tasks),
+					)
+					return
+				}
+				// 	task = tasks[number-1]
+				// }
+				if number > len(c.TaskListSet.TaskLists) {
+					break
+				}
+				task := tasks[number-1]
+
+				base := filepath.Base(task.Task)
+				replacement := strings.TrimSuffix(base, filepath.Ext(base))
+
+				// Avoid endless loop
+				if parse.RENumberedBasenameNoExtension.MatchString(task.Task) {
+					err = fmt.Errorf("item %s matches regular expression %s", replacement, parse.RENumberedBasenameNoExtension.String())
+					return
+				}
+
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d./}`, number), replacement)
 			}
-			task := tasks[number-1]
-
-			base := filepath.Base(task.Task)
-			replacement := strings.TrimSuffix(base, filepath.Ext(base))
-
-			// Avoid endless loop
-			if parse.RENumberedBasenameNoExtension.MatchString(task.Task) {
-				err = fmt.Errorf("item %s matches regular expression %s", replacement, parse.RENumberedBasenameNoExtension.String())
-				return
-			}
-
-			c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d./}`, number), replacement)
 		}
 	}
 
