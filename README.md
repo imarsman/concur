@@ -14,8 +14,10 @@ As currently implemented, goparallel gets lists for input from three distinct so
 
 1. from standard input as a set of lines
 2. from lists of arguments using the -a flag (you can use one or more of these and each will be a separate list)
-3. from the -f flag, which reads lines of files to a set of lines. 
- 
+
+The parallel tool allows files to be specified to be read in line by line and the lines sent through the command. I will
+find a way to make this work clearly.
+
 Basically, the lists are sources of input for commands run. I have kept the {1}, {2} notation from parallel as well as
 the notation used for splitting paths and files into their components. I have not implemented the complex combanitorial
 ordering logic for incoming lists. Lists are processed one item per command and the length of the output in terms of
@@ -49,10 +51,10 @@ list values 2 5
 ## Tokens
 
 - `{} or {1}` - list 1 item
-- `{.} or {1.}` - list 1 item without extension or same with list number
-- `{/} or {1/}` - list 1 item basename of input line or same with list number
-- `{//} or {1//}` - list 1 item dirname of output line or same with list number
-- `{./} or {1./}` - list 1 item bsename of input line without extension or same with list number
+- `{.} or {1.}` - list 1 item without extension or same with numbered task list item
+- `{/} or {1/}` - list 1 item basename of input line or same with numbered task list item
+- `{//} or {1//}` - list 1 item dirname of output line or same with numbered task list item
+- `{./} or {1./}` - list 1 item bsename of input line without extension or same with numbered task list item
 - `{#}` sequence number of the job
 - `{%}` job slot number (based on concurrency)
 - `{1..10}` - a range - specify in `-a` and make sure to quote
@@ -76,8 +78,8 @@ that. Results otherwise are unpredictable.
 
 ```
 $ goparallel -h
-Usage: goparallel [--arguments ARGUMENTS] [--files FILES] [--dry-run] 
-                  [--slots SLOTS] [--shuffle] [--ordered] [--keep-order] [COMMAND]
+Usage: goparallel [--arguments ARGUMENTS] [--dry-run] [--slots SLOTS] 
+                  [--shuffle] [--ordered] [--keep-order] [COMMAND]
 
 Positional arguments:
   COMMAND
@@ -85,8 +87,6 @@ Positional arguments:
 Options:
   --arguments ARGUMENTS, -a ARGUMENTS
                          lists of arguments
-  --files FILES, -f FILES
-                         files to read into lines
   --dry-run, -d          show command to run but don't run
   --slots SLOTS, -s SLOTS
                          number of parallel tasks
