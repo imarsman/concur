@@ -447,14 +447,6 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 					break
 				}
 
-				// task := tasks[0]
-				// if len(c.TaskListSet.TaskLists) == 1 {
-				// 	tasks, atEnd, err = c.TaskListSet.NextAll()
-				// 	if err != nil {
-				// 		fmt.Println("error")
-				// 		return
-				// 	}
-				// } else {
 				if len(tasks) < number {
 					err = fmt.Errorf(
 						"task item {%d/.} for task list count %d out of range",
