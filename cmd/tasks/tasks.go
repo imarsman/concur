@@ -49,20 +49,15 @@ func (tl TaskList) Shuffle() {
 
 // TaskListSet a set of task lists
 type TaskListSet struct {
-	// StdInList *TaskList
 	TaskLists []*TaskList
-	// ArgsLists []*TaskList
-	Sequence int64
-	Offset   int64
+	Sequence  int64
+	Offset    int64
 }
 
 // NewTaskListSet make a new task list set
 func NewTaskListSet() TaskListSet {
 	tls := TaskListSet{}
-	// stdInList := NewTaskList()
-	// tls.StdInList = &stdInList
 	tls.TaskLists = make([]*TaskList, 0)
-	// tls.ArgsLists = make([]*TaskList, 0)
 	tls.Sequence = 1
 
 	return tls
@@ -109,16 +104,6 @@ func (tls *TaskListSet) AddTaskList(taskList TaskList) {
 	tls.TaskLists = append(tls.TaskLists, &taskList)
 }
 
-// // AddArgList add a task list ot the taskSet
-// func (tls *TaskListSet) AddArgList(taskList TaskList) {
-// 	tls.ArgsLists = append(tls.ArgsLists, &taskList)
-// }
-
-// // SetStdInList set the stdin list
-// func (tls *TaskListSet) SetStdInList(taskList *TaskList) {
-// 	tls.StdInList = taskList
-// }
-
 // Max get maximum task list size
 func (tls *TaskListSet) Max() (max int) {
 	for _, v := range tls.TaskLists {
@@ -126,14 +111,6 @@ func (tls *TaskListSet) Max() (max int) {
 			max = len(v.Tasks)
 		}
 	}
-	// if len(tls.StdInList.Tasks) > max {
-	// 	max = len(tls.StdInList.Tasks)
-	// }
-	// for _, v := range tls.ArgsLists {
-	// 	if len(v.Tasks) > max {
-	// 		max = len(v.Tasks)
-	// 	}
-	// }
 
 	return
 }
@@ -148,48 +125,9 @@ func (tls TaskListSet) NextAll() (tasks []Task, atEnd bool, err error) {
 		}
 		tasks = append(tasks, task)
 	}
-	// for i := range tls.ArgsLists {
-	// 	var task Task
-	// 	task, atEnd, err = tls.Next(i)
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// 	tasks = append(tasks, task)
-	// }
-	// if len(tls.StdInList.Tasks) > 0 {
-	// 	var tl = tls.StdInList
-	// 	var task Task
-	// 	task, atEnd, err = tl.Next()
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// 	tasks = append(tasks, task)
-	// }
 
 	return
 }
-
-// // BackUpAll is for advancing within a list and that is not working
-// func (tls TaskListSet) BackUpAll() (err error) {
-// 	for i := range tls.TaskLists {
-// 		var taskList = tls.TaskLists[i]
-// 		offset := taskList.Offset
-// 		// fmt.Println("offset", offset)
-// 		if offset == len(taskList.Tasks)-1 {
-// 			// fmt.Println("here", taskList.Offset)
-// 			taskList.Offset = 0
-// 			// fmt.Println("here", taskList.Offset)
-// 		} else {
-// 			if offset >= len(taskList.Tasks)-1 {
-// 				// fmt.Println("there", taskList.Offset)
-// 				offset = len(taskList.Tasks) - 1
-// 				// fmt.Println("there", taskList.Offset)
-// 			}
-// 		}
-// 		// fmt.Println("here", i)
-// 	}
-// 	return
-// }
 
 // Next treat task list as a circle that loops back to zero
 func (tls *TaskListSet) Next(list int) (task Task, atEnd bool, err error) {
