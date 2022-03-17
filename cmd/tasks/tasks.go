@@ -28,6 +28,7 @@ type TaskList struct {
 // NewTaskList make a new task list
 func NewTaskList() TaskList {
 	tl := TaskList{}
+	tl.Offset = 0
 	return tl
 }
 
@@ -48,20 +49,20 @@ func (tl TaskList) Shuffle() {
 
 // TaskListSet a set of task lists
 type TaskListSet struct {
-	StdInList *TaskList
+	// StdInList *TaskList
 	TaskLists []*TaskList
-	ArgsLists []*TaskList
-	Sequence  int64
-	Offset    int64
+	// ArgsLists []*TaskList
+	Sequence int64
+	Offset   int64
 }
 
 // NewTaskListSet make a new task list set
 func NewTaskListSet() TaskListSet {
 	tls := TaskListSet{}
-	stdInList := NewTaskList()
-	tls.StdInList = &stdInList
+	// stdInList := NewTaskList()
+	// tls.StdInList = &stdInList
 	tls.TaskLists = make([]*TaskList, 0)
-	tls.ArgsLists = make([]*TaskList, 0)
+	// tls.ArgsLists = make([]*TaskList, 0)
 	tls.Sequence = 1
 
 	return tls
@@ -74,6 +75,7 @@ func (tls *TaskListSet) SequenceSet(sequence int64) (err error) {
 		err = fmt.Errorf("sequence to set %d outside of max %d", len(tls.TaskLists)-1, sequence)
 	}
 	atomic.AddInt64(&tls.Sequence, sequence)
+
 	return
 }
 
@@ -87,6 +89,16 @@ func (tls *TaskListSet) SequenceReset() {
 	atomic.StoreInt64(&tls.Sequence, 0)
 }
 
+// OffsetReset reset sequence
+func (tls *TaskListSet) OffsetReset() {
+	fmt.Println("offset reset")
+	for _, tl := range tls.TaskLists {
+		tl.Offset = 0
+		fmt.Println("offset", tl.Offset)
+	}
+	atomic.StoreInt64(&tls.Offset, 0)
+}
+
 // GetSequence get lock free sequence value
 func (tls *TaskListSet) GetSequence() int64 {
 	return atomic.LoadInt64(&tls.Sequence)
@@ -97,15 +109,15 @@ func (tls *TaskListSet) AddTaskList(taskList TaskList) {
 	tls.TaskLists = append(tls.TaskLists, &taskList)
 }
 
-// AddArgList add a task list ot the taskSet
-func (tls *TaskListSet) AddArgList(taskList TaskList) {
-	tls.ArgsLists = append(tls.ArgsLists, &taskList)
-}
+// // AddArgList add a task list ot the taskSet
+// func (tls *TaskListSet) AddArgList(taskList TaskList) {
+// 	tls.ArgsLists = append(tls.ArgsLists, &taskList)
+// }
 
-// SetStdInList set the stdin list
-func (tls *TaskListSet) SetStdInList(taskList *TaskList) {
-	tls.StdInList = taskList
-}
+// // SetStdInList set the stdin list
+// func (tls *TaskListSet) SetStdInList(taskList *TaskList) {
+// 	tls.StdInList = taskList
+// }
 
 // Max get maximum task list size
 func (tls *TaskListSet) Max() (max int) {
@@ -114,14 +126,14 @@ func (tls *TaskListSet) Max() (max int) {
 			max = len(v.Tasks)
 		}
 	}
-	if len(tls.StdInList.Tasks) > max {
-		max = len(tls.StdInList.Tasks)
-	}
-	for _, v := range tls.ArgsLists {
-		if len(v.Tasks) > max {
-			max = len(v.Tasks)
-		}
-	}
+	// if len(tls.StdInList.Tasks) > max {
+	// 	max = len(tls.StdInList.Tasks)
+	// }
+	// for _, v := range tls.ArgsLists {
+	// 	if len(v.Tasks) > max {
+	// 		max = len(v.Tasks)
+	// 	}
+	// }
 
 	return
 }
@@ -130,57 +142,57 @@ func (tls *TaskListSet) Max() (max int) {
 func (tls TaskListSet) NextAll() (tasks []Task, atEnd bool, err error) {
 	for i := range tls.TaskLists {
 		var task Task
-		task, atEnd, err = tls.next(i)
+		task, atEnd, err = tls.Next(i)
 		if err != nil {
 			return
 		}
 		tasks = append(tasks, task)
 	}
-	for i := range tls.ArgsLists {
-		var task Task
-		task, atEnd, err = tls.next(i)
-		if err != nil {
-			return
-		}
-		tasks = append(tasks, task)
-	}
-	if len(tls.StdInList.Tasks) > 0 {
-		var tl = tls.StdInList
-		var task Task
-		task, atEnd, err = tl.next()
-		if err != nil {
-			return
-		}
-		tasks = append(tasks, task)
-	}
+	// for i := range tls.ArgsLists {
+	// 	var task Task
+	// 	task, atEnd, err = tls.Next(i)
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// 	tasks = append(tasks, task)
+	// }
+	// if len(tls.StdInList.Tasks) > 0 {
+	// 	var tl = tls.StdInList
+	// 	var task Task
+	// 	task, atEnd, err = tl.Next()
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// 	tasks = append(tasks, task)
+	// }
 
 	return
 }
 
-// BackUpAll is for advancing within a list and that is not working
-func (tls TaskListSet) BackUpAll() (err error) {
-	for i := range tls.TaskLists {
-		var taskList = tls.TaskLists[i]
-		offset := taskList.Offset
-		// fmt.Println("offset", offset)
-		if offset == len(taskList.Tasks)-1 {
-			// fmt.Println("here", taskList.Offset)
-			taskList.Offset = 0
-			// fmt.Println("here", taskList.Offset)
-		} else {
-			if offset >= len(taskList.Tasks)-1 {
-				// fmt.Println("there", taskList.Offset)
-				offset = len(taskList.Tasks) - 1
-				// fmt.Println("there", taskList.Offset)
-			}
-		}
-		// fmt.Println("here", i)
-	}
-	return
-}
+// // BackUpAll is for advancing within a list and that is not working
+// func (tls TaskListSet) BackUpAll() (err error) {
+// 	for i := range tls.TaskLists {
+// 		var taskList = tls.TaskLists[i]
+// 		offset := taskList.Offset
+// 		// fmt.Println("offset", offset)
+// 		if offset == len(taskList.Tasks)-1 {
+// 			// fmt.Println("here", taskList.Offset)
+// 			taskList.Offset = 0
+// 			// fmt.Println("here", taskList.Offset)
+// 		} else {
+// 			if offset >= len(taskList.Tasks)-1 {
+// 				// fmt.Println("there", taskList.Offset)
+// 				offset = len(taskList.Tasks) - 1
+// 				// fmt.Println("there", taskList.Offset)
+// 			}
+// 		}
+// 		// fmt.Println("here", i)
+// 	}
+// 	return
+// }
 
-// next treat task list as a circle that loops back to zero
-func (tls *TaskListSet) next(list int) (task Task, atEnd bool, err error) {
+// Next treat task list as a circle that loops back to zero
+func (tls *TaskListSet) Next(list int) (task Task, atEnd bool, err error) {
 	var taskList *TaskList
 	if list <= len(tls.TaskLists)-1 {
 		taskList = tls.TaskLists[list]
@@ -202,8 +214,8 @@ func (tls *TaskListSet) next(list int) (task Task, atEnd bool, err error) {
 	return
 }
 
-// next treat task list as a circle that loops back to zero
-func (tl *TaskList) next() (task Task, atEnd bool, err error) {
+// Next treat task list as a circle that loops back to zero
+func (tl *TaskList) Next() (task Task, atEnd bool, err error) {
 	task = tl.Tasks[tl.Offset]
 	newOffset := tl.Offset
 	if newOffset >= len(tl.Tasks)-1 {
