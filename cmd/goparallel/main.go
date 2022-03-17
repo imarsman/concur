@@ -52,6 +52,38 @@ var callArgs struct {
 }
 
 func main() {
+	// var args = os.Args
+
+	// call := args[1:]
+	// fmt.Println(call)
+	// re := regexp.MustCompile(`([\:]{3,4})`)
+	// parts := re.Split(strings.Join(call, " "), -1)
+	// // fmt.Println("parts", parts, len(parts))
+
+	// var command string
+	// var keepOrder bool
+	// var dryRun bool
+	// var sequences []string
+
+	// for i, p := range parts {
+	// 	if i == 0 {
+	// 		command = p
+	// 		continue
+	// 	}
+	// 	if strings.Contains(p, "-k") {
+	// 		keepOrder = true
+	// 		p = strings.ReplaceAll(p, "-k", "")
+	// 	}
+	// 	if strings.Contains(p, "-d") {
+	// 		dryRun = true
+	// 		p = strings.ReplaceAll(p, "-d", "")
+	// 	}
+
+	// 	sequences = append(sequences, p)
+	// 	fmt.Println(p)
+	// }
+
+	// fmt.Println(command, sequences, keepOrder, dryRun)
 	arg.MustParse(&callArgs)
 
 	if callArgs.Slots == 0 {
@@ -83,9 +115,11 @@ func main() {
 
 	// Add list verbatim
 	if len(callArgs.Arguments) > 0 {
+		// c:
 		for _, v := range callArgs.Arguments {
-			parts := strings.Split(v, " ")
 			taskList := tasks.NewTaskList()
+			parts := strings.Split(v, " ")
+
 			for _, part := range parts {
 				part = strings.TrimSpace(part)
 				if parse.RERange.MatchString(part) {
@@ -96,7 +130,22 @@ func main() {
 					}
 					taskList.Add(items...)
 				} else {
-					taskList.Add(part)
+					matches, err := filepath.Glob(part)
+					if err != nil {
+						continue
+					}
+					if len(matches) == 0 {
+						taskList.Add(strings.TrimSpace(part))
+					} else {
+						var files []string
+						for _, f := range matches {
+							f, _ := os.Stat(f)
+							if !f.IsDir() {
+								files = append(files, f.Name())
+							}
+						}
+						taskList.Add(files...)
+					}
 				}
 				if callArgs.Shuffle {
 					taskList.Shuffle()
@@ -104,6 +153,9 @@ func main() {
 			}
 			taskListSet.AddTaskList(taskList)
 		}
+		// for _, t := range taskListSet.TaskLists {
+		// 	fmt.Println("task list", t)
+		// }
 	}
 
 	// Add all lines for all files
