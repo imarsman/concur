@@ -6,21 +6,15 @@ import (
 	"strconv"
 )
 
-/**
- * Parses input with the given regular expression and returns the
- * group values defined in the expression.
- */
-func params(regEx *regexp.Regexp, input string) (paramsMap map[string]string) {
-	match := regEx.FindStringSubmatch(input)
-
-	paramsMap = make(map[string]string)
-	for i, name := range regEx.SubexpNames() {
-		if i > 0 && i <= len(match) {
-			paramsMap[name] = match[i]
-		}
-	}
-	return paramsMap
-}
+const (
+	TokenInputLine            = `{}`
+	TokenInputLineNoExtension = `{.}`
+	TokenBaseName             = `{/}`
+	TokenDirname              = `{//}`
+	TokenBaseNameNoExtension  = `{/.}`
+	TokenSequence             = `{#}`
+	TokenSlot                 = `{%}`
+)
 
 // RENumbered regular expression for just a number
 var RENumbered = regexp.MustCompile(`\{(?P<NUMBER>\d+)\}`)
@@ -39,6 +33,22 @@ var RENumberedBasenameNoExtension = regexp.MustCompile(`\{(?P<NUMBER>\d+)\.\/\}`
 
 // RERange regular expression for a range such as {0..9}
 var RERange = regexp.MustCompile(`\{(?P<START>\d+)\.\.(?P<END>\d+)\}`)
+
+/**
+ * Parses input with the given regular expression and returns the
+ * group values defined in the expression.
+ */
+func params(regEx *regexp.Regexp, input string) (paramsMap map[string]string) {
+	match := regEx.FindStringSubmatch(input)
+
+	paramsMap = make(map[string]string)
+	for i, name := range regEx.SubexpNames() {
+		if i > 0 && i <= len(match) {
+			paramsMap[name] = match[i]
+		}
+	}
+	return paramsMap
+}
 
 // NumberFromToken get a number from a token
 func NumberFromToken(re *regexp.Regexp, input string) (found bool, number int, err error) {
