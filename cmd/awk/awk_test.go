@@ -20,13 +20,13 @@ func newAwkCommand(command, payload string) (cmd awkCommand) {
 }
 
 func getCommands() []awkCommand {
-	command := `BEGIN { OFS = " "} { FS = "\\s+"} {ORS = ""} { printf "%s" $1; $1=$2=""; print $0 }`
+	command := `BEGIN { OFS = " "} { FS = "\\s+"} {ORS = ""} { print $1; $1=$2=""; sub("  "," "); print $0 }`
 	payload := "prefix hello world"
 
 	commands := []awkCommand{}
 	commands = append(commands, newAwkCommand(command, payload))
-	commands = append(commands, newAwkCommand(command, "prefix godbye cruel world"))
-	commands = append(commands, newAwkCommand(command, "prefix tomorrow and tomorrow and tomorrow"))
+	commands = append(commands, newAwkCommand(command, "first goodbye cruel world"))
+	commands = append(commands, newAwkCommand(command, "first tomorrow and tomorrow and tomorrow"))
 
 	return commands
 }
@@ -37,6 +37,7 @@ func TestCommand(t *testing.T) {
 	is := is.New(t)
 
 	for _, c := range commands {
+		// fmt.Println(c.command, c.payload)
 		awk, err := NewAwk(c.command)
 		is.NoErr(err)
 		output, err := awk.Execute(c.payload)
