@@ -10,6 +10,7 @@ require (
 
 require (
 	github.com/alexflint/go-scalar v1.1.0 // indirect
+	github.com/benhoyt/goawk v1.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/posener/complete/v2 v2.0.1-alpha.13 // indirect
