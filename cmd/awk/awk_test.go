@@ -6,17 +6,44 @@ import (
 	"github.com/matryer/is"
 )
 
+type awkCommand struct {
+	command string
+	payload string
+}
+
+func newAwkCommand(command, payload string) (cmd awkCommand) {
+	cmd = awkCommand{}
+	cmd.command = command
+	cmd.payload = payload
+
+	return
+}
+
+func getCommands() []awkCommand {
+	command := `BEGIN { OFS = " "} { FS = "\\s+"} {ORS = ""} { printf "%s" $1; $1=$2=""; print $0 }`
+	payload := "prefix hello world"
+
+	commands := []awkCommand{}
+	commands = append(commands, newAwkCommand(command, payload))
+	commands = append(commands, newAwkCommand(command, "prefix godbye cruel world"))
+	commands = append(commands, newAwkCommand(command, "prefix tomorrow and tomorrow and tomorrow"))
+
+	return commands
+}
+
 func TestCommand(t *testing.T) {
+	commands := getCommands()
+
 	is := is.New(t)
-	command := `BEGIN { OFS = " "} { FS = "\\s+"} { print $1, $2 }`
-	payload := "hello world"
 
-	awk, err := NewAwk(command)
-	is.NoErr(err)
-
-	output, err := awk.Execute(payload)
-	is.NoErr(err)
-	t.Log(output)
+	for _, c := range commands {
+		awk, err := NewAwk(c.command)
+		is.NoErr(err)
+		output, err := awk.Execute(c.payload)
+		is.NoErr(err)
+		t.Log("payload:", c.payload)
+		t.Logf("%s\n", output)
+	}
 }
 
 // go test -bench=. -benchmem
