@@ -94,49 +94,6 @@ func (c *Command) SequenceReset() {
 	atomic.StoreInt64(&c.Sequence, 0)
 }
 
-var count int = 0
-
-// RunCommand run all items in task lists against RunCommand
-func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error) {
-	count++
-
-	ctx := context.Background()
-
-	err = c.Prepare(taskSet)
-	if err != nil {
-		wg.Done()
-
-		return
-	}
-
-	err = sem.Acquire(ctx, 1)
-	if err != nil {
-		wg.Done()
-
-		panic(err)
-	}
-
-	var run = func() {
-		defer wg.Done()
-		defer sem.Release(1)
-
-		err = c.Execute()
-		if err != nil {
-			wg.Done()
-			return
-		}
-	}
-
-	// Run in order (slower) or in parallel
-	if c.Config.Ordered {
-		run()
-	} else {
-		go run()
-	}
-
-	return
-}
-
 // is a file valid - not using currently as it will cause un-needed failures
 func isValid(fp string) bool {
 	// Check if file already exists
@@ -522,6 +479,45 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d./}`, number), shellescape.Quote(replacement))
 			}
 		}
+	}
+
+	return
+}
+
+// RunCommand run all items in task lists against RunCommand
+func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error) {
+	ctx := context.Background()
+
+	err = c.Prepare(taskSet)
+	if err != nil {
+		wg.Done()
+
+		return
+	}
+
+	err = sem.Acquire(ctx, 1)
+	if err != nil {
+		wg.Done()
+
+		panic(err)
+	}
+
+	var run = func() {
+		defer wg.Done()
+		defer sem.Release(1)
+
+		err = c.Execute()
+		if err != nil {
+			wg.Done()
+			return
+		}
+	}
+
+	// Run in order (slower) or in parallel
+	if c.Config.Ordered {
+		run()
+	} else {
+		go run()
 	}
 
 	return
