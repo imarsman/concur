@@ -460,3 +460,24 @@ Argument: 10
 
 goparallel echo "Argument: {}" -a '1 2 3 4 5 {6..10}'  0.02s user 0.03s system 176% cpu 0.027 total
 ```
+
+## Trivia
+
+In keeping with my recent trend when writing utilities, there are about 1,000 lines of `golang` code. I have moved
+towards having a package contain about 400 lines of code with more allowed if the package is doing one thing such as
+implementing handler functions. 1,000 lines of code to define data types and variables and functions to use all of that
+is not as readable.
+
+```sh
+$ gocloc . --not-match-d vendor
+-------------------------------------------------------------------------------
+Language                     files          blank        comment           code
+-------------------------------------------------------------------------------
+Go                               9            222            202           1024
+Markdown                         1             81              0            381
+YAML                             1              3              1             29
+Plain Text                       2              0              0             23
+-------------------------------------------------------------------------------
+TOTAL                           13            306            203           1457
+-------------------------------------------------------------------------------
+```
