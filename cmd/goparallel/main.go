@@ -81,6 +81,7 @@ func main() {
 		KeepOrder:   callArgs.KeepOrder,
 		Concurrency: callArgs.Slots,
 		Awk:         awkCommand,
+		PrintEmpty:  callArgs.PrintEmpty,
 	}
 
 	// if callArgs.Command == "" {
