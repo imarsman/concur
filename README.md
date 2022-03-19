@@ -212,6 +212,15 @@ I will find out if this is a useful utility. There are some interesting uses, in
 of `tail`
 
 ```sh
+$ tail -f /var/log/*log|goparallel -A 'BEGIN {FS="\\s+"; OFS=","} /completed/ {print $0}' -o
+/dev/rdisk3s3: fsck_apfs completed at Mon Mar  7 14:16:56 2022
+/dev/rdisk3s3: fsck_apfs completed at Wed Mar 16 22:00:41 2022
+fsck_apfs completed at Wed Mar 16 22:00:41 2022
+/dev/rdisk4s2: fsck_hfs completed at Thu Mar 17 21:39:26 2022
+/dev/rdisk4s2: fsck_hfs completed at Thu Mar 17 21:39:26 2022
+```
+
+```sh
 tail -f /var/log/*log|goparallel -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}'
 ==>,/var/log/acroUpdaterTools.log,<==
 Jan,12,,2022
@@ -233,8 +242,6 @@ Jan,12,,2022
 ...
 ...
 ```
-
-In the above example, output can be ordered by input sequence and blank lines can be printed.
 
 I will very likely find errors and bugs.
 
