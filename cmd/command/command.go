@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 
 	"github.com/alessio/shellescape"
+	"github.com/imarsman/goparallel/cmd/awk"
 	"github.com/imarsman/goparallel/cmd/parse"
 	"github.com/imarsman/goparallel/cmd/tasks"
 	"golang.org/x/sync/semaphore"
@@ -35,6 +36,7 @@ func (c *Command) SetConcurrency(concurrency int64) {
 
 // Config config parameters
 type Config struct {
+	Awk         *awk.Awk // awk script to use
 	Slots       int64
 	DryRun      bool
 	Ordered     bool
@@ -47,9 +49,8 @@ func init() {
 
 // Command a command
 type Command struct {
-	Command string
-	Slots   int64
-	// TaskListSet *tasks.TaskListSet
+	Command  string
+	Slots    int64
 	Config   Config
 	Sequence int64
 }
@@ -57,9 +58,8 @@ type Command struct {
 // NewCommand create a new command struct instance
 func NewCommand(value string, taskListSet *tasks.TaskListSet, config Config) Command {
 	c := Command{
-		Command: value,
-		Slots:   config.Slots,
-		// TaskListSet: taskListSet,
+		Command:  value,
+		Slots:    config.Slots,
 		Config:   config,
 		Sequence: 1,
 	}
@@ -117,7 +117,6 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 	}
 
 	var run = func() {
-		// fmt.Println("tasks!", taskSet, c.Command)
 		defer wg.Done()
 		defer sem.Release(1)
 
@@ -126,7 +125,6 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 			wg.Done()
 			return
 		}
-		// wg.Done()
 	}
 
 	// Run in order (slower) or in parallel
@@ -203,12 +201,23 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 
 	defaultTask := tasks[0]
 
+	if strings.TrimSpace(c.Command) == "" {
+		c.Command = "echo"
+	}
+
 	if !strings.Contains(c.Command, `{`) {
 		var sb strings.Builder
-		for i := range tasks {
-			_, err = sb.WriteString(fmt.Sprintf("{%d} ", i+1))
+		if len(tasks) == 1 {
+			_, err = sb.WriteString("{}")
 			if err != nil {
 				return
+			}
+		} else {
+			for i := range tasks {
+				_, err = sb.WriteString(fmt.Sprintf("{%d} ", i+1))
+				if err != nil {
+					return
+				}
 			}
 		}
 		c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))

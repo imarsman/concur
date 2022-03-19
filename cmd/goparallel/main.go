@@ -44,6 +44,7 @@ func readLines(path string) ([]string, error) {
 var callArgs struct {
 	Command    string   `arg:"positional"`
 	Arguments  []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
+	Awk        string   `arg:"-A,--awk" help:"process using supplied awk script"`
 	DryRun     bool     `arg:"-d,--dry-run" help:"show command to run but don't run"`
 	Slots      int64    `arg:"-s,--slots" default:"8" help:"number of parallel tasks"`
 	Shuffle    bool     `arg:"-S,--shuffle" help:"shuffle tasks prior to running"`
@@ -69,6 +70,10 @@ func main() {
 		KeepOrder:   callArgs.KeepOrder,
 		Concurrency: callArgs.Slots,
 	}
+
+	// if callArgs.Command == "" {
+	// 	callArgs.Command = `echo`
+	// }
 
 	// Define command to run
 	var c = command.NewCommand(
