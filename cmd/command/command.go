@@ -42,6 +42,7 @@ type Config struct {
 	Ordered     bool
 	KeepOrder   bool
 	Concurrency int64
+	PrintEmpty  bool
 }
 
 func init() {
@@ -161,7 +162,6 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 
 	// If empty, flag that
 	if strings.TrimSpace(c.Command) == "" {
-		// c.Command = "echo"
 		c.Empty = true
 	}
 
@@ -169,6 +169,7 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 	foundToken := parse.REToken.MatchString(c.Command)
 
 	// If no tokens, supply them
+	// With an empty command the result will be the placement of the incoming value
 	if !foundToken {
 		var sb strings.Builder
 		if len(tasks) == 1 {
@@ -602,12 +603,14 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 // Sends stdout and stderr to system stdout and stderr.
 // func (c *Command) Execute() (stdout, stdErr string, err error) {
 func (c *Command) Execute() (err error) {
-	var buffStdOut bytes.Buffer
-	var buffStdErr bytes.Buffer
+	outStr := c.Command
+	errStr := ""
 
-	if c.Empty {
-		buffStdOut.WriteString(c.Command)
-	} else {
+	// If the command started out as "" don't try to run command, otherwise run
+	if !c.Empty {
+		var buffStdOut bytes.Buffer
+		var buffStdErr bytes.Buffer
+
 		cmd := exec.Command("bash", "-c", c.Command)
 
 		cmd.Stdout = &buffStdOut
@@ -619,30 +622,38 @@ func (c *Command) Execute() (err error) {
 				fmt.Println(cmd.String())
 				fmt.Println("got error on run", cmd.String(), err)
 			}
-
 		} else {
 			fmt.Println(strings.TrimSpace(cmd.String()))
 			return
 		}
+
+		outStr = buffStdOut.String()
+		errStr = buffStdErr.String()
 	}
 
-	// Make buffers for command output
-	outStr := buffStdOut.String()
-	errStr := buffStdErr.String()
-
+	// Run awk against what has been produced so far
 	if c.Config.Awk != nil {
 		outStr, err = c.Config.Awk.Execute(outStr)
 		if err != nil {
-			fmt.Println(err)
+			errStr := fmt.Sprintf("%v", err)
+			c.Print(os.Stderr, errStr)
 			os.Exit(1)
 		}
-	}
-
-	// if outStr != "" {
-	c.Print(os.Stdout, outStr)
-	// }
-	if errStr != "" {
-		c.Print(os.Stderr, errStr)
+		if outStr == "" && c.Config.PrintEmpty {
+			if c.Config.PrintEmpty {
+				c.Print(os.Stdout, outStr)
+			} else {
+				return
+			}
+		}
+		if outStr != "" {
+			c.Print(os.Stdout, outStr)
+		}
+	} else {
+		c.Print(os.Stdout, outStr)
+		if errStr != "" {
+			c.Print(os.Stderr, errStr)
+		}
 	}
 
 	return
