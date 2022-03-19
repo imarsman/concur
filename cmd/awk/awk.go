@@ -9,16 +9,16 @@ import (
 	"github.com/benhoyt/goawk/parser"
 )
 
-// Awk a container for awk script execution
-type Awk struct {
+// Command a container for awk script execution
+type Command struct {
 	Parser      *parser.Program
 	Config      *interp.Config
 	Interpreter *interp.Interpreter
 }
 
-// NewAwk make a new Awk struct for running awk scripts
-func NewAwk(command string) (awk *Awk, err error) {
-	awk = &Awk{}
+// NewCommand make a new Awk struct for running awk scripts
+func NewCommand(command string) (awk *Command, err error) {
+	awk = &Command{}
 	prog, err := parser.ParseProgram([]byte(command), nil)
 	if err != nil {
 		err = fmt.Errorf("got error %v", err)
@@ -34,7 +34,7 @@ func NewAwk(command string) (awk *Awk, err error) {
 }
 
 // Execute run a precompiled interpreter against a payload
-func (awk *Awk) Execute(payload string) (output string, err error) {
+func (cmd *Command) Execute(payload string) (output string, err error) {
 	outBuf := new(bytes.Buffer)
 	errBuf := new(bytes.Buffer)
 
@@ -44,7 +44,7 @@ func (awk *Awk) Execute(payload string) (output string, err error) {
 		Error:  errBuf,
 	}
 
-	result, err := awk.Interpreter.Execute(config)
+	result, err := cmd.Interpreter.Execute(config)
 	if err != nil {
 		err = fmt.Errorf("got error %d - %v", result, err)
 		return

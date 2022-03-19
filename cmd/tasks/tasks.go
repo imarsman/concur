@@ -29,6 +29,7 @@ type TaskList struct {
 func NewTaskList() TaskList {
 	tl := TaskList{}
 	tl.Offset = 0
+
 	return tl
 }
 
@@ -50,8 +51,7 @@ func (tl TaskList) Shuffle() {
 // TaskListSet a set of task lists
 type TaskListSet struct {
 	TaskLists []*TaskList
-	// Sequence  int64
-	Offset int64
+	Offset    int64
 }
 
 // NewTaskListSet make a new task list set
@@ -68,6 +68,7 @@ func (tls *TaskListSet) OffsetReset() {
 	for _, tl := range tls.TaskLists {
 		tl.Offset = 0
 	}
+
 	atomic.StoreInt64(&tls.Offset, 0)
 }
 
