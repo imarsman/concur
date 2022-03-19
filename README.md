@@ -25,8 +25,10 @@ Things like tying one list's members to a previous one would I think require a d
 Given that I am not a researcher carrying out randomized experiments the likely focus for this code will be allowing the
 parallel execution of shell commands and the most likely mode of use I think would be the use of a single incoming list.
 
-I've added the ability to handle piped input from standard input. This might be useful when doing things like
+I've added the ability to handle input piped from stdin. This might be useful when doing things like
 transforming log data from one format to another.
+
+I've added the use of an escaping library to try to avoid causing errors with shell interpretation of commands.
 
 I really like being able to process and send along text. Shells allow this sort of direction and redirection and piping.
 goparallel allows for incoming lists to be represented and used in commands run. I am thinking of adding an awk
