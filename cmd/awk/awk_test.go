@@ -28,6 +28,8 @@ func getCommands() []awkCommand {
 	commands = append(commands, newAwkCommand(command, "first goodbye cruel world"))
 	commands = append(commands, newAwkCommand(command, "first tomorrow and tomorrow and tomorrow"))
 
+	// cat /var/log/system.log|goawk 'BEGIN { OFS = " "} {printf "%s", $" "1$2" "$3; $1=$2=$3=""; sub("  ", " "); print $0}'
+
 	return commands
 }
 

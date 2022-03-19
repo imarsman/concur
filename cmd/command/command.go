@@ -10,18 +10,36 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 
+	"github.com/alessio/shellescape"
 	"github.com/imarsman/goparallel/cmd/parse"
 	"github.com/imarsman/goparallel/cmd/tasks"
 	"golang.org/x/sync/semaphore"
 )
 
+var sem *semaphore.Weighted
+
+func init() {
+	sem = semaphore.NewWeighted(8)
+}
+
+var once sync.Once
+
+// SetConcurrency allow concurrency to be set
+func (c *Command) SetConcurrency(concurrency int64) {
+	once.Do(func() {
+		sem = semaphore.NewWeighted(concurrency)
+	})
+}
+
 // Config config parameters
 type Config struct {
-	Slots     int
-	DryRun    bool
-	Ordered   bool
-	KeepOrder bool
+	Slots       int64
+	DryRun      bool
+	Ordered     bool
+	KeepOrder   bool
+	Concurrency int64
 }
 
 func init() {
@@ -29,80 +47,89 @@ func init() {
 
 // Command a command
 type Command struct {
-	Command     string
-	Concurrency int
-	TaskListSet *tasks.TaskListSet
-	Config      Config
+	Command string
+	Slots   int64
+	// TaskListSet *tasks.TaskListSet
+	Config   Config
+	Sequence int64
 }
 
 // NewCommand create a new command struct instance
 func NewCommand(value string, taskListSet *tasks.TaskListSet, config Config) Command {
 	c := Command{
-		Command:     value,
-		Concurrency: config.Slots,
-		TaskListSet: taskListSet,
-		Config:      config,
+		Command: value,
+		Slots:   config.Slots,
+		// TaskListSet: taskListSet,
+		Config:   config,
+		Sequence: 1,
 	}
 
 	return c
 }
 
+// SequenceSet set sequence
+// For use with things like {2} where getting extra items is needed.
+func (c *Command) SequenceSet(sequence int64) (err error) {
+	// if sequence > int64(len(tls.TaskLists)-1) {
+	// 	err = fmt.Errorf("sequence to set %d outside of max %d", len(tls.TaskLists)-1, sequence)
+	// }
+	atomic.AddInt64(&c.Sequence, sequence)
+
+	return
+}
+
+// GetSequence get lock free sequence value
+func (c *Command) GetSequence() int64 {
+	return atomic.LoadInt64(&c.Sequence)
+}
+
+// SequenceIncr increment sequence without lock
+func (c *Command) SequenceIncr() {
+	atomic.AddInt64(&c.Sequence, 1)
+}
+
+// SequenceReset reset sequence
+func (c *Command) SequenceReset() {
+	atomic.StoreInt64(&c.Sequence, 0)
+}
+
+var wgRun sync.WaitGroup
+
 // RunCommand run all items in task lists against RunCommand
-func RunCommand(c Command) (err error) {
+func RunCommand(c Command, taskSet []tasks.Task, wg sync.WaitGroup) (err error) {
 	ctx := context.TODO()
-	sem := semaphore.NewWeighted(int64(c.Concurrency))
 
-	var wg sync.WaitGroup
-	for i := 0; i < c.TaskListSet.Max(); i++ {
-		// Add delta of 1 to waitgroup
-		wg.Add(1)
+	wg.Add(1)
+	wgRun.Add(1)
 
-		// Copying
-		// -------
-		// TaskListSet is a pointer so remains.
-		// Command is a string and gets copied to the new one from the incoming
-		// Other attributes are not changed.
-		c2 := c.Copy()
+	err = c.Prepare(taskSet)
+	if err != nil {
+		return
+	}
 
-		var atEnd bool
-		atEnd, err = c2.Prepare()
+	err = sem.Acquire(ctx, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	var run = func() {
+		defer sem.Release(1)
+		defer wg.Done()
+		defer wgRun.Done()
+
+		err = c.Execute()
 		if err != nil {
 			return
 		}
-		// We have reached the end of the list of input items
-		// This can happen when more than one input item is used in a command.
-		// e.g. echo {1} {2}
-		// This is not implemented yet.
-		if atEnd && i < c.TaskListSet.Max() {
-			break
-		}
-
-		err = sem.Acquire(ctx, 1)
-		if err != nil {
-			panic(err)
-		}
-
-		var run = func() {
-			defer sem.Release(1)
-			defer wg.Done()
-			err = c2.Execute()
-			if err != nil {
-				// wg.Done()
-				fmt.Println("err", err)
-				// panic(err)
-			}
-		}
-
-		// Run in order (slower) or in parallel
-		if c.Config.Ordered {
-			run()
-		} else {
-			go run()
-		}
 	}
 
-	// Wait for all goroutines to complete
-	wg.Wait()
+	// Run in order (slower) or in parallel
+	if c.Config.Ordered {
+		run()
+	} else {
+		go run()
+	}
+	wgRun.Wait()
 
 	return
 }
@@ -127,18 +154,18 @@ func (c *Command) Copy() (newCommand Command) {
 
 // GetSlotNumber get slot number based on sequence and concurrency
 func (c Command) GetSlotNumber() int64 {
-	var slotNumber = c.Concurrency
-	var sequence = c.TaskListSet.Sequence
-	if int64(c.Concurrency) <= sequence {
-		slotNumber = int(sequence) % c.Concurrency
+	var slotNumber = c.Slots
+	var sequence = c.Sequence
+	if int64(c.Slots) <= sequence {
+		slotNumber = sequence % c.Slots
 	} else {
-		slotNumber = int(sequence)
+		slotNumber = sequence
 	}
 	if slotNumber == 0 {
-		slotNumber = c.Concurrency
+		slotNumber = c.Slots
 	}
 
-	return sequence
+	return slotNumber
 }
 
 /**
@@ -159,13 +186,13 @@ func getParams(regEx *regexp.Regexp, input string) (paramsMap map[string]string)
 }
 
 // Prepare replace placeholders with data from incoming
-func (c *Command) Prepare() (atEnd bool, err error) {
+func (c *Command) Prepare(tasks []tasks.Task) (err error) {
+	defer c.GetSlotNumber()
 
-	sequence := c.TaskListSet.GetSequence()
+	sequence := c.GetSequence()
 
-	tasks, atEnd, err := c.TaskListSet.NextAll()
+	// tasks, err := c.TaskListSet.NextAll()
 	if err != nil {
-		fmt.Println("error")
 		return
 	}
 
@@ -183,7 +210,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 	}
 
 	var replaceToken = func(pattern string, replace string) {
-		if len(c.TaskListSet.TaskLists) == 1 {
+		if len(tasks) == 1 {
 			for strings.Contains(c.Command, pattern) {
 				c.Command = strings.Replace(c.Command, pattern, replace, 1)
 			}
@@ -197,7 +224,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 	// {}
 	// Input line
 	if strings.Contains(c.Command, parse.TokenInputLine) {
-		replaceToken(parse.TokenInputLine, defaultTask.Task)
+		replaceToken(parse.TokenInputLine, shellescape.Quote(defaultTask.Task))
 	}
 
 	// {.}
@@ -208,19 +235,19 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
 		replacement := filepath.Join(dir, noExtension)
 
-		replaceToken(parse.TokenInputLineNoExtension, replacement)
+		replaceToken(parse.TokenInputLineNoExtension, shellescape.Quote(replacement))
 	}
 
 	// {/}
 	// Basename of input line.
 	if strings.Contains(c.Command, parse.TokenBaseName) {
-		replaceToken(parse.TokenBaseName, filepath.Base(defaultTask.Task))
+		replaceToken(parse.TokenBaseName, filepath.Base(shellescape.Quote(defaultTask.Task)))
 	}
 
 	// {//}
 	// Dirname of output line.
 	if strings.Contains(c.Command, parse.TokenDirname) {
-		replaceToken(parse.TokenDirname, filepath.Dir(defaultTask.Task))
+		replaceToken(parse.TokenDirname, filepath.Dir(shellescape.Quote(defaultTask.Task)))
 	}
 
 	// {/.}
@@ -229,21 +256,22 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		base := filepath.Base(defaultTask.Task)
 		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
 
-		c.Command = strings.ReplaceAll(c.Command, parse.TokenBaseNameNoExtension, noExtension)
+		// replaceToken(parse.TokenDirname, filepath.Dir(shellescape.Quote(defaultTask.Task)))
+		replaceToken(parse.TokenBaseNameNoExtension, shellescape.Quote(noExtension))
 	}
 	// {#}
 	// Sequence number of the job to run.
 	if strings.Contains(c.Command, parse.TokenSequence) {
-		replaceToken(parse.TokenSequence, fmt.Sprint(sequence))
+		replaceToken(parse.TokenSequence, shellescape.Quote(fmt.Sprint(sequence)))
 	}
 
 	// {%}
 	// Job slot number.
 	if strings.Contains(c.Command, parse.TokenSlot) {
-		replaceToken(parse.TokenSlot, fmt.Sprint(c.GetSlotNumber()))
+		replaceToken(parse.TokenSlot, shellescape.Quote(fmt.Sprint(c.GetSlotNumber())))
 	}
 
-	if len(c.TaskListSet.TaskLists) > 1 {
+	if len(tasks) > 1 {
 		var found bool
 		var number int
 
@@ -252,7 +280,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 		// Note - nth argument handling not implemented.
 		found, number, err = parse.NumberFromToken(parse.RENumbered, c.Command)
 		if err != nil {
-			return false, err
+			return
 		}
 		if found {
 			for {
@@ -272,7 +300,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 					)
 					return
 				}
-				if number > len(c.TaskListSet.TaskLists) {
+				if number > len(tasks) {
 					break
 				}
 				task := tasks[number-1]
@@ -289,7 +317,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 
 				replacement := task.Task
 
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), replacement)
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), shellescape.Quote(replacement))
 			}
 		}
 
@@ -319,7 +347,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 					return
 				}
 
-				if number > len(c.TaskListSet.TaskLists) {
+				if number > len(tasks) {
 					break
 				}
 				task := tasks[number-1]
@@ -335,7 +363,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 					return
 				}
 
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), replacement)
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), shellescape.Quote(replacement))
 			}
 		}
 
@@ -364,7 +392,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 					)
 					return
 				}
-				if number > len(c.TaskListSet.TaskLists) {
+				if number > len(tasks) {
 					break
 				}
 				task := tasks[number-1]
@@ -381,7 +409,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 					return
 				}
 
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), replacement)
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), shellescape.Quote(replacement))
 			}
 		}
 
@@ -410,7 +438,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 					)
 					return
 				}
-				if number > len(c.TaskListSet.TaskLists) {
+				if number > len(tasks) {
 					break
 				}
 				task := tasks[number-1]
@@ -457,7 +485,7 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 				}
 				// 	task = tasks[number-1]
 				// }
-				if number > len(c.TaskListSet.TaskLists) {
+				if number > len(tasks) {
 					break
 				}
 				task := tasks[number-1]
@@ -471,12 +499,10 @@ func (c *Command) Prepare() (atEnd bool, err error) {
 					return
 				}
 
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d./}`, number), replacement)
+				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d./}`, number), shellescape.Quote(replacement))
 			}
 		}
 	}
-
-	c.TaskListSet.SequenceIncr()
 
 	return
 }
@@ -498,7 +524,9 @@ func (c *Command) Execute() (err error) {
 	if !c.Config.DryRun {
 		err = cmd.Run()
 		if err != nil {
-			return
+			fmt.Println(cmd.String())
+			fmt.Println("got error on run", cmd.String(), err)
+			// return
 		}
 
 	} else {

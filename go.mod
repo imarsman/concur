@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/alexflint/go-scalar v1.1.0 // indirect
 	github.com/benhoyt/goawk v1.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
