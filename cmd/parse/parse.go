@@ -17,7 +17,10 @@ const (
 )
 
 // REToken a catch-all token
-var REToken = regexp.MustCompile(`\{(?:\d*[\/\.]+){0,1}\}`)
+var REToken = regexp.MustCompile(`.*\{\d*[\/\.]*\}.*`)
+
+// RENumberedToken a catch-all token
+var RENumberedToken = regexp.MustCompile(`\{(?:\d*[\/\.]+){0,1}\}`)
 
 // RENumbered regular expression for just a number
 var RENumbered = regexp.MustCompile(`\{(?P<NUMBER>\d+)\}`)
