@@ -202,11 +202,12 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 
 	defaultTask := tasks[0]
 
+	// If empty, flag that
 	if strings.TrimSpace(c.Command) == "" {
 		c.Empty = true
-		c.Command = ""
 	}
 
+	// If no tokens, supply them
 	if !strings.Contains(c.Command, `{`) {
 		var sb strings.Builder
 		if len(tasks) == 1 {
@@ -226,6 +227,7 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 		c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
 	}
 
+	// replaceToken replace a token with a replacement string for the command
 	var replaceToken = func(pattern string, replace string) {
 		if len(tasks) == 1 {
 			for strings.Contains(c.Command, pattern) {
