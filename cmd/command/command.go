@@ -561,32 +561,25 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 
 // RunCommand run all items in task lists against RunCommand
 func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error) {
-	ctx := context.Background()
 
-	wg.Add(1)
-	defer wg.Done()
+	ctx := context.Background()
 
 	err = c.Prepare(taskSet)
 	if err != nil {
-		wg.Done()
-
+		fmt.Println(err)
 		return
 	}
 
 	err = sem.Acquire(ctx, 1)
 	if err != nil {
-		wg.Done()
-
 		panic(err)
 	}
 
 	var run = func() {
-		// defer wg.Done()
+		defer wg.Done()
 		defer sem.Release(1)
-
 		err = c.Execute()
 		if err != nil {
-			// wg.Done()
 			return
 		}
 	}
@@ -595,6 +588,7 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 	if c.Config.Ordered {
 		run()
 	} else {
+		fmt.Println("1")
 		go run()
 	}
 

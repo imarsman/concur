@@ -185,6 +185,7 @@ func main() {
 	}
 	if !stdin {
 		for i := 0; i < taskListSet.Max(); i++ {
+			wg.Add(1)
 			tasks, err := taskListSet.NextAll()
 
 			empty := true
@@ -203,8 +204,6 @@ func main() {
 				continue
 			}
 
-			// wg.Add(1)
-
 			err = command.RunCommand(c2, tasks, wg)
 			if err != nil {
 				fmt.Println(err)
@@ -213,10 +212,6 @@ func main() {
 
 			c.SequenceIncr()
 		}
-
-		// Wait for all goroutines to complete
-		// wg.Wait()
-
 	}
 
 	wg.Wait()

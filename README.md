@@ -243,6 +243,23 @@ Jan,12,,2022
 ...
 ```
 
+Here is an example of using both a standard input list and an additional list with awk
+
+```sh
+$ cat test/test.txt | goparallel 'echo {1} {2}' -o -a 'a b c' -A '{FS="\\s+"; OFS=" "} {print $1, $2, $3, $4}' -o
+name color amount a
+apple red 4 b
+banana yellow 6 c
+strawberry red 3 a
+raspberry red 99 b
+grape purple 10 c
+apple green 8 a
+plum purple 2 b
+kiwi brown 4 c
+potato brown 9 a
+pineapple yellow 5 b
+```
+
 I will very likely find errors and bugs.
 
 ## Usage
