@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/benhoyt/goawk/interp"
 	"github.com/benhoyt/goawk/parser"
@@ -33,8 +34,13 @@ func NewCommand(command string) (awk *Command, err error) {
 	return
 }
 
+var mu sync.Mutex
+
 // Execute run a precompiled interpreter against a payload
 func (cmd *Command) Execute(payload string) (output string, err error) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	outBuf := new(bytes.Buffer)
 	errBuf := new(bytes.Buffer)
 
