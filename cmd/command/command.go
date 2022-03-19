@@ -563,6 +563,9 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error) {
 	ctx := context.Background()
 
+	wg.Add(1)
+	defer wg.Done()
+
 	err = c.Prepare(taskSet)
 	if err != nil {
 		wg.Done()
@@ -578,12 +581,12 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 	}
 
 	var run = func() {
-		defer wg.Done()
+		// defer wg.Done()
 		defer sem.Release(1)
 
 		err = c.Execute()
 		if err != nil {
-			wg.Done()
+			// wg.Done()
 			return
 		}
 	}

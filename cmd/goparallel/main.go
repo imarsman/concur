@@ -143,7 +143,6 @@ func main() {
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		stdin = true
-		// stdinItems := []string{}
 		var scanner = bufio.NewScanner(os.Stdin)
 
 		// Tell scanner to scan by lines.
@@ -175,30 +174,15 @@ func main() {
 				taskSet = append(taskSet, newTasks...)
 			}
 			c2 := c.Copy()
-			wg.Add(1)
+			// wg.Add(1)
 			err := command.RunCommand(c2, taskSet, wg)
 			if err != nil {
 				fmt.Println("got error", err)
 				os.Exit(1)
 			}
 			c.SequenceIncr()
-
 		}
-		//  else {
-		// 	stdinItems = append(stdinItems, item)
-		// }
 	}
-	// wg.Wait()
-	// return
-	// if len(stdinItems) > 0 {
-	// 	taskList := tasks.NewTaskList()
-	// 	taskList.Add(stdinItems...)
-	// 	taskListSet.AddTaskList(taskList)
-	// } else {
-	// 	wg.Wait()
-	// 	return
-	// }
-	// }
 	if !stdin {
 		for i := 0; i < taskListSet.Max(); i++ {
 			tasks, err := taskListSet.NextAll()
@@ -219,7 +203,7 @@ func main() {
 				continue
 			}
 
-			wg.Add(1)
+			// wg.Add(1)
 
 			err = command.RunCommand(c2, tasks, wg)
 			if err != nil {
@@ -231,13 +215,10 @@ func main() {
 		}
 
 		// Wait for all goroutines to complete
-		wg.Wait()
+		// wg.Wait()
 
 	}
 
-	// if len(callArgs.Arguments) == 0 {
-	// Wait for all goroutines to complete
 	wg.Wait()
-	os.Exit(0)
-	// }
+	// os.Exit(0)
 }
