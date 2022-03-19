@@ -93,58 +93,33 @@ func (c *Command) SequenceReset() {
 	atomic.StoreInt64(&c.Sequence, 0)
 }
 
-var wgRun sync.WaitGroup
-
 var count int = 0
 
-type WaitGroupCount struct {
-	sync.WaitGroup
-	count int64
-}
-
-func (wg *WaitGroupCount) Add(delta int) {
-	// fmt.Println("adding 1", wg.count)
-	atomic.AddInt64(&wg.count, int64(delta))
-	// fmt.Println("adding 2", wg.count)
-	wg.WaitGroup.Add(delta)
-}
-
-func (wg *WaitGroupCount) Done() {
-	// fmt.Println("done 1", wg.count)
-	atomic.AddInt64(&wg.count, -1)
-	// fmt.Println("done 2", wg.count)
-	wg.WaitGroup.Done()
-}
-
-func (wg *WaitGroupCount) GetCount() int {
-	return int(atomic.LoadInt64(&wg.count))
-}
-
 // RunCommand run all items in task lists against RunCommand
-func RunCommand(c Command, taskSet []tasks.Task, wg *WaitGroupCount) (err error) {
+func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error) {
 	count++
 	// fmt.Println("count", count)
 
 	ctx := context.Background()
 
-	// wg.Add(1)
-	// wgRun.Add(1)
-
 	err = c.Prepare(taskSet)
 	if err != nil {
+		wg.Done()
+
 		return
 	}
 
 	err = sem.Acquire(ctx, 1)
 	if err != nil {
+		wg.Done()
+
 		panic(err)
 	}
 
 	var run = func() {
-		// wg.Add(1)
+		// fmt.Println("tasks!", taskSet, c.Command)
 		defer wg.Done()
 		defer sem.Release(1)
-		// defer wgRun.Done()
 
 		err = c.Execute()
 		if err != nil {
@@ -160,7 +135,6 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *WaitGroupCount) (err error)
 	} else {
 		go run()
 	}
-	// wgRun.Wait()
 
 	return
 }
@@ -565,11 +539,11 @@ func (c *Command) Execute() (err error) {
 	outStr := buffStdOut.String()
 	errStr := buffStdErr.String()
 
-	if outStr != "" {
-		c.print(os.Stdout, outStr)
-	}
+	// if outStr != "" {
+	c.Print(os.Stdout, outStr)
+	// }
 	if errStr != "" {
-		c.print(os.Stderr, errStr)
+		c.Print(os.Stderr, errStr)
 	}
 
 	return
@@ -577,8 +551,8 @@ func (c *Command) Execute() (err error) {
 
 var mu sync.Mutex
 
-// print send to output
-func (c *Command) print(file *os.File, str string) {
+// Print send to output
+func (c *Command) Print(file *os.File, str string) {
 	if !c.Config.KeepOrder {
 		mu.Lock()
 		defer mu.Unlock()
