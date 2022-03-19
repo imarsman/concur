@@ -207,8 +207,11 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 		c.Empty = true
 	}
 
+	// look for tokens except for {#} and {%}
+	foundToken := parse.REToken.MatchString(c.Command)
+
 	// If no tokens, supply them
-	if !strings.Contains(c.Command, `{`) {
+	if !foundToken {
 		var sb strings.Builder
 		if len(tasks) == 1 {
 			_, err = sb.WriteString("{}")
@@ -548,7 +551,8 @@ func (c *Command) Execute() (err error) {
 			}
 
 		} else {
-			fmt.Println(cmd.String())
+			fmt.Println(strings.TrimSpace(cmd.String()))
+			return
 		}
 	}
 
