@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/alexflint/go-arg"
 	"github.com/imarsman/goparallel/cmd/command"
@@ -41,13 +42,14 @@ func readLines(path string) ([]string, error) {
 
 // callArgs command line arguments
 var callArgs struct {
-	Command   string   `arg:"positional"`
-	Arguments []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
-	DryRun    bool     `arg:"-d,--dry-run" help:"show command to run but don't run"`
-	Slots     int64    `arg:"-s,--slots" default:"8" help:"number of parallel tasks"`
-	Shuffle   bool     `arg:"-S,--shuffle" help:"shuffle tasks prior to running"`
-	Ordered   bool     `arg:"-o,--ordered" help:"run tasks in their incoming order"`
-	KeepOrder bool     `arg:"-k,--keep-order" help:"don't keep output for calls separate"`
+	Command    string   `arg:"positional"`
+	Arguments  []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
+	DryRun     bool     `arg:"-d,--dry-run" help:"show command to run but don't run"`
+	Slots      int64    `arg:"-s,--slots" default:"8" help:"number of parallel tasks"`
+	Shuffle    bool     `arg:"-S,--shuffle" help:"shuffle tasks prior to running"`
+	Ordered    bool     `arg:"-o,--ordered" help:"run tasks in their incoming order"`
+	KeepOrder  bool     `arg:"-k,--keep-order" help:"don't keep output for calls separate"`
+	PrintEmpty bool     `arg:"-E,--print-empty" help:"print empty lines"`
 }
 
 func main() {
@@ -76,7 +78,7 @@ func main() {
 	)
 
 	c.SetConcurrency(callArgs.Slots)
-	var wg = new(command.WaitGroupCount)
+	var wg = new(sync.WaitGroup)
 
 	// Use stdin if it is available
 	// It will be the first task list if it is available
@@ -93,7 +95,13 @@ func main() {
 			item = scanner.Text()
 			item = strings.TrimSpace(item)
 			// fmt.Println(item)
-			if len(callArgs.Arguments) == 0 && len(item) > 0 {
+			if len(callArgs.Arguments) == 0 {
+				if len(strings.TrimSpace(item)) == 0 {
+					if callArgs.PrintEmpty {
+						c.Print(os.Stdout, "")
+					}
+					continue
+				}
 				var task = tasks.NewTask(item)
 				var taskSet []tasks.Task
 				taskSet = append(taskSet, *task)
@@ -115,11 +123,9 @@ func main() {
 			taskList.Add(stdinItems...)
 			taskListSet.AddTaskList(taskList)
 		} else {
+			wg.Wait()
+			return
 		}
-	}
-	if len(callArgs.Arguments) == 0 {
-		wg.Wait()
-		return
 	}
 	if len(callArgs.Arguments) == 0 {
 		// Wait for all goroutines to complete
@@ -135,6 +141,7 @@ func main() {
 				taskList := tasks.NewTaskList()
 				parts := strings.Split(v, " ")
 
+				// TODO: handle reading file lines if that makes sense
 				for _, part := range parts {
 					part = strings.TrimSpace(part)
 					if parse.RERange.MatchString(part) {
@@ -174,7 +181,24 @@ func main() {
 	for i := 0; i < taskListSet.Max(); i++ {
 		tasks, err := taskListSet.NextAll()
 
+		empty := true
+		for _, t := range tasks {
+			if len(strings.TrimSpace(t.Task)) > 0 {
+				empty = false
+				continue
+			}
+		}
+
 		c2 := c.Copy()
+		if empty {
+			if callArgs.PrintEmpty {
+				c2.Print(os.Stdout, "")
+			}
+			continue
+		}
+
+		wg.Add(1)
+
 		err = command.RunCommand(c2, tasks, wg)
 		if err != nil {
 			fmt.Println(err)
