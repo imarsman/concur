@@ -95,11 +95,39 @@ func (c *Command) SequenceReset() {
 
 var wgRun sync.WaitGroup
 
-// RunCommand run all items in task lists against RunCommand
-func RunCommand(c Command, taskSet []tasks.Task, wg sync.WaitGroup) (err error) {
-	ctx := context.TODO()
+var count int = 0
 
-	wg.Add(1)
+type WaitGroupCount struct {
+	sync.WaitGroup
+	count int64
+}
+
+func (wg *WaitGroupCount) Add(delta int) {
+	// fmt.Println("adding 1", wg.count)
+	atomic.AddInt64(&wg.count, int64(delta))
+	// fmt.Println("adding 2", wg.count)
+	wg.WaitGroup.Add(delta)
+}
+
+func (wg *WaitGroupCount) Done() {
+	// fmt.Println("done 1", wg.count)
+	atomic.AddInt64(&wg.count, -1)
+	// fmt.Println("done 2", wg.count)
+	wg.WaitGroup.Done()
+}
+
+func (wg *WaitGroupCount) GetCount() int {
+	return int(atomic.LoadInt64(&wg.count))
+}
+
+// RunCommand run all items in task lists against RunCommand
+func RunCommand(c Command, taskSet []tasks.Task, wg *WaitGroupCount) (err error) {
+	count++
+	// fmt.Println("count", count)
+
+	ctx := context.Background()
+
+	// wg.Add(1)
 	// wgRun.Add(1)
 
 	err = c.Prepare(taskSet)
@@ -113,14 +141,17 @@ func RunCommand(c Command, taskSet []tasks.Task, wg sync.WaitGroup) (err error) 
 	}
 
 	var run = func() {
-		defer sem.Release(1)
+		// wg.Add(1)
 		defer wg.Done()
+		defer sem.Release(1)
 		// defer wgRun.Done()
 
 		err = c.Execute()
 		if err != nil {
+			wg.Done()
 			return
 		}
+		// wg.Done()
 	}
 
 	// Run in order (slower) or in parallel

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 
 	"github.com/alexflint/go-arg"
 	"github.com/imarsman/goparallel/cmd/command"
@@ -77,7 +76,7 @@ func main() {
 	)
 
 	c.SetConcurrency(callArgs.Slots)
-	var wg sync.WaitGroup
+	var wg = new(command.WaitGroupCount)
 
 	// Use stdin if it is available
 	// It will be the first task list if it is available
@@ -99,6 +98,7 @@ func main() {
 				var taskSet []tasks.Task
 				taskSet = append(taskSet, *task)
 				c2 := c.Copy()
+				wg.Add(1)
 				err := command.RunCommand(c2, taskSet, wg)
 				if err != nil {
 					fmt.Println("got error", err)
@@ -114,9 +114,13 @@ func main() {
 			taskList := tasks.NewTaskList()
 			taskList.Add(stdinItems...)
 			taskListSet.AddTaskList(taskList)
+		} else {
 		}
 	}
-
+	if len(callArgs.Arguments) == 0 {
+		wg.Wait()
+		return
+	}
 	if len(callArgs.Arguments) == 0 {
 		// Wait for all goroutines to complete
 		wg.Wait()
