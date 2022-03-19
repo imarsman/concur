@@ -588,7 +588,6 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 	if c.Config.Ordered {
 		run()
 	} else {
-		fmt.Println("1")
 		go run()
 	}
 

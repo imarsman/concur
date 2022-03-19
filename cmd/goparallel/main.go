@@ -92,7 +92,9 @@ func main() {
 	c.SetConcurrency(callArgs.Slots)
 	var wg = new(sync.WaitGroup)
 
+	var foundArgumentList = false
 	if len(callArgs.Arguments) > 0 {
+		foundArgumentList = true
 		// Add list verbatim
 		if len(callArgs.Arguments) > 0 {
 			for _, v := range callArgs.Arguments {
@@ -167,14 +169,14 @@ func main() {
 			var taskSet []tasks.Task
 			taskSet = append(taskSet, *task)
 
-			if len(taskListSet.TaskLists) > 0 {
+			if foundArgumentList {
 				newTasks, err := taskListSet.NextAll()
 				if err != nil {
 				}
 				taskSet = append(taskSet, newTasks...)
 			}
 			c2 := c.Copy()
-			// wg.Add(1)
+			wg.Add(1)
 			err := command.RunCommand(c2, taskSet, wg)
 			if err != nil {
 				fmt.Println("got error", err)
