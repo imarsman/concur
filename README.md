@@ -6,7 +6,7 @@ input in parallel, similar to the `parallel` and `xargs` utilities.
 
 `parallel` excels at producing lists of text values that can be used to do many amazing things when they are integrated
 into shell commands. The implementation of `goparallel` is more deterministic, with one predictable set of inputs for
-each line processed. There is no real re-arranging of input.
+each line processed. There is no real re-arranging of input lists beyond randomization.
 
 `goparallel` involves lists that can be used for input and those lists can be used to produce text values that are
 integrated into shell commands. `goparallel` is not as focussed on producing varied sets of values to be used in
