@@ -185,7 +185,11 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 			}
 		}
 
-		c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
+		if c.Command == "" {
+			c.Command = fmt.Sprintf("%s", strings.TrimSpace(sb.String()))
+		} else {
+			c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
+		}
 	}
 
 	// replaceToken replace a token with a replacement string for the command
