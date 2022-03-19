@@ -55,6 +55,7 @@ func (cmd *Command) Execute(payload string) (output string, err error) {
 		err = fmt.Errorf("got error %d - %v", result, err)
 		return
 	}
+	output = outBuf.String()
 
-	return outBuf.String(), err
+	return
 }
