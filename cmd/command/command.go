@@ -619,8 +619,8 @@ func (c *Command) Execute() (err error) {
 		if !c.Config.DryRun {
 			err = cmd.Run()
 			if err != nil {
-				fmt.Println(cmd.String())
-				fmt.Println("got error on run", cmd.String(), err)
+				errStr = fmt.Sprintf("%v", err)
+				c.Print(os.Stderr, errStr)
 			}
 		} else {
 			fmt.Println(strings.TrimSpace(cmd.String()))

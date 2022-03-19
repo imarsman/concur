@@ -40,7 +40,7 @@ func TestCommand(t *testing.T) {
 
 	for _, c := range commands {
 		// fmt.Println(c.command, c.payload)
-		awk, err := NewAwk(c.command)
+		awk, err := NewCommand(c.command)
 		is.NoErr(err)
 		output, err := awk.Execute(c.payload)
 		is.NoErr(err)
@@ -57,7 +57,7 @@ func BenchmarkFib10(b *testing.B) {
 	payload := "hello world"
 
 	var err error
-	awk, err := NewAwk(command)
+	awk, err := NewCommand(command)
 	is.NoErr(err)
 
 	var output string

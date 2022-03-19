@@ -22,8 +22,6 @@ func init() {
 	slots = 8
 }
 
-// args CLI args
-
 // readLines reads a whole file into memory
 // and returns a slice of its lines.
 func readLines(path string) ([]string, error) {
@@ -71,8 +69,6 @@ func main() {
 		callArgs.Slots = int64(runtime.NumCPU())
 	}
 
-	taskListSet := tasks.NewTaskListSet()
-
 	// Make config to hold various parameters
 	config := command.Config{
 		Slots:       callArgs.Slots,
@@ -84,9 +80,7 @@ func main() {
 		PrintEmpty:  callArgs.PrintEmpty,
 	}
 
-	// if callArgs.Command == "" {
-	// 	callArgs.Command = `echo`
-	// }
+	taskListSet := tasks.NewTaskListSet()
 
 	// Define command to run
 	var c = command.NewCommand(
@@ -97,60 +91,6 @@ func main() {
 
 	c.SetConcurrency(callArgs.Slots)
 	var wg = new(sync.WaitGroup)
-
-	// Use stdin if it is available
-	// It will be the first task list if it is available
-	stat, _ := os.Stdin.Stat()
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		stdinItems := []string{}
-		var scanner = bufio.NewScanner(os.Stdin)
-
-		// Tell scanner to scan by lines.
-		scanner.Split(bufio.ScanLines)
-
-		var item string
-		for scanner.Scan() {
-			item = scanner.Text()
-			item = strings.TrimSpace(item)
-			// fmt.Println(item)
-			if len(callArgs.Arguments) == 0 {
-				if len(strings.TrimSpace(item)) == 0 {
-					if callArgs.PrintEmpty {
-						c.Print(os.Stdout, "")
-					}
-					continue
-				}
-				var task = tasks.NewTask(item)
-				var taskSet []tasks.Task
-				taskSet = append(taskSet, *task)
-				c2 := c.Copy()
-				wg.Add(1)
-				err := command.RunCommand(c2, taskSet, wg)
-				if err != nil {
-					fmt.Println("got error", err)
-					os.Exit(1)
-				}
-				c.SequenceIncr()
-
-			} else {
-				stdinItems = append(stdinItems, item)
-			}
-		}
-		if len(stdinItems) > 0 {
-			taskList := tasks.NewTaskList()
-			taskList.Add(stdinItems...)
-			taskListSet.AddTaskList(taskList)
-		} else {
-			wg.Wait()
-			return
-		}
-	}
-	if len(callArgs.Arguments) == 0 {
-		// Wait for all goroutines to complete
-		wg.Wait()
-
-		os.Exit(0)
-	}
 
 	if len(callArgs.Arguments) > 0 {
 		// Add list verbatim
@@ -196,36 +136,108 @@ func main() {
 		}
 	}
 
-	for i := 0; i < taskListSet.Max(); i++ {
-		tasks, err := taskListSet.NextAll()
+	stdin := false
 
-		empty := true
-		for _, t := range tasks {
-			if len(strings.TrimSpace(t.Task)) > 0 {
-				empty = false
+	// Use stdin if it is available
+	// It will be the first task list if it is available
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		stdin = true
+		// stdinItems := []string{}
+		var scanner = bufio.NewScanner(os.Stdin)
+
+		// Tell scanner to scan by lines.
+		scanner.Split(bufio.ScanLines)
+
+		var item string
+		for scanner.Scan() {
+			item = scanner.Text()
+			item = strings.TrimSpace(item)
+			// If we have just stdin and no -a lists handle them as they come
+			// This may not always work if stdin continues and other lists have been specified
+			// Probably need to allow for -a lists to be specified and incorporate them on the fly.
+			// if len(callArgs.Arguments) == 0 {
+			if len(item) == 0 {
+				// Print out empty lines if that has been flagged
+				if callArgs.PrintEmpty {
+					c.Print(os.Stdout, "")
+				}
 				continue
 			}
-		}
+			var task = tasks.NewTask(item)
+			var taskSet []tasks.Task
+			taskSet = append(taskSet, *task)
 
-		c2 := c.Copy()
-		if empty {
-			if callArgs.PrintEmpty {
-				c2.Print(os.Stdout, "")
+			if len(taskListSet.TaskLists) > 0 {
+				newTasks, err := taskListSet.NextAll()
+				if err != nil {
+				}
+				taskSet = append(taskSet, newTasks...)
 			}
-			continue
+			c2 := c.Copy()
+			wg.Add(1)
+			err := command.RunCommand(c2, taskSet, wg)
+			if err != nil {
+				fmt.Println("got error", err)
+				os.Exit(1)
+			}
+			c.SequenceIncr()
+
+		}
+		//  else {
+		// 	stdinItems = append(stdinItems, item)
+		// }
+	}
+	// wg.Wait()
+	// return
+	// if len(stdinItems) > 0 {
+	// 	taskList := tasks.NewTaskList()
+	// 	taskList.Add(stdinItems...)
+	// 	taskListSet.AddTaskList(taskList)
+	// } else {
+	// 	wg.Wait()
+	// 	return
+	// }
+	// }
+	if !stdin {
+		for i := 0; i < taskListSet.Max(); i++ {
+			tasks, err := taskListSet.NextAll()
+
+			empty := true
+			for _, t := range tasks {
+				if len(strings.TrimSpace(t.Task)) > 0 {
+					empty = false
+					continue
+				}
+			}
+
+			c2 := c.Copy()
+			if empty {
+				if callArgs.PrintEmpty {
+					c2.Print(os.Stdout, "")
+				}
+				continue
+			}
+
+			wg.Add(1)
+
+			err = command.RunCommand(c2, tasks, wg)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			c.SequenceIncr()
 		}
 
-		wg.Add(1)
+		// Wait for all goroutines to complete
+		wg.Wait()
 
-		err = command.RunCommand(c2, tasks, wg)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		c.SequenceIncr()
 	}
 
+	// if len(callArgs.Arguments) == 0 {
 	// Wait for all goroutines to complete
 	wg.Wait()
+	os.Exit(0)
+	// }
 }

@@ -1,3 +1,5 @@
+// Use awk interpreter to run awk scripts against input text
+
 package awk
 
 import (
@@ -9,6 +11,9 @@ import (
 	"github.com/benhoyt/goawk/interp"
 	"github.com/benhoyt/goawk/parser"
 )
+
+// For script execution
+var mu sync.Mutex
 
 // Command a container for awk script execution
 type Command struct {
@@ -34,10 +39,9 @@ func NewCommand(command string) (awk *Command, err error) {
 	return
 }
 
-var mu sync.Mutex
-
 // Execute run a precompiled interpreter against a payload
 func (cmd *Command) Execute(payload string) (output string, err error) {
+	// mutex is needed to avoid errors from asynchronous use of map
 	mu.Lock()
 	defer mu.Unlock()
 
