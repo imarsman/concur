@@ -36,7 +36,7 @@ func (c *Command) SetConcurrency(concurrency int64) {
 
 // Config config parameters
 type Config struct {
-	Awk         *awk.Awk // awk script to use
+	Awk         *awk.Command // awk script to use
 	Slots       int64
 	DryRun      bool
 	Ordered     bool
@@ -161,6 +161,7 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 
 	// If empty, flag that
 	if strings.TrimSpace(c.Command) == "" {
+		// c.Command = "echo"
 		c.Empty = true
 	}
 
@@ -203,7 +204,13 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 	// {}
 	// Input line
 	if strings.Contains(c.Command, parse.TokenInputLine) {
-		replaceToken(parse.TokenInputLine, shellescape.Quote(defaultTask.Task))
+		replacement := defaultTask.Task
+
+		if c.Empty {
+			replaceToken(parse.TokenInputLine, replacement)
+		} else {
+			replaceToken(parse.TokenInputLine, shellescape.Quote(replacement))
+		}
 	}
 
 	// {.}
@@ -214,40 +221,73 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
 		replacement := filepath.Join(dir, noExtension)
 
-		replaceToken(parse.TokenInputLineNoExtension, shellescape.Quote(replacement))
+		if c.Empty {
+			replaceToken(parse.TokenInputLine, replacement)
+		} else {
+			replaceToken(parse.TokenInputLine, shellescape.Quote(replacement))
+		}
 	}
 
 	// {/}
 	// Basename of input line.
 	if strings.Contains(c.Command, parse.TokenBaseName) {
-		replaceToken(parse.TokenBaseName, filepath.Base(shellescape.Quote(defaultTask.Task)))
+		replacement := defaultTask.Task
+
+		if c.Empty {
+			replaceToken(parse.TokenBaseName, replacement)
+		} else {
+			replaceToken(parse.TokenBaseName, shellescape.Quote(replacement))
+		}
 	}
 
 	// {//}
 	// Dirname of output line.
 	if strings.Contains(c.Command, parse.TokenDirname) {
+		replacement := defaultTask.Task
+
+		if c.Empty {
+			replaceToken(parse.TokenDirname, replacement)
+		} else {
+			replaceToken(parse.TokenDirname, shellescape.Quote(replacement))
+		}
+
 		replaceToken(parse.TokenDirname, filepath.Dir(shellescape.Quote(defaultTask.Task)))
 	}
 
 	// {/.}
 	// Basename of input line without extension.
 	if strings.Contains(c.Command, parse.TokenBaseNameNoExtension) {
-		base := filepath.Base(defaultTask.Task)
-		noExtension := strings.TrimSuffix(base, filepath.Ext(base))
+		replacement := defaultTask.Task
 
-		// replaceToken(parse.TokenDirname, filepath.Dir(shellescape.Quote(defaultTask.Task)))
-		replaceToken(parse.TokenBaseNameNoExtension, shellescape.Quote(noExtension))
+		base := filepath.Base(replacement)
+		replacement = strings.TrimSuffix(base, filepath.Ext(base))
+
+		if c.Empty {
+			replaceToken(parse.TokenBaseNameNoExtension, replacement)
+		} else {
+			replaceToken(parse.TokenBaseNameNoExtension, shellescape.Quote(replacement))
+		}
 	}
 	// {#}
 	// Sequence number of the job to run.
 	if strings.Contains(c.Command, parse.TokenSequence) {
-		replaceToken(parse.TokenSequence, shellescape.Quote(fmt.Sprint(sequence)))
+		replacement := fmt.Sprint(sequence)
+		if c.Empty {
+			replaceToken(parse.TokenSequence, replacement)
+		} else {
+			replaceToken(parse.TokenSequence, shellescape.Quote(replacement))
+		}
 	}
 
 	// {%}
 	// Job slot number.
 	if strings.Contains(c.Command, parse.TokenSlot) {
-		replaceToken(parse.TokenSlot, shellescape.Quote(fmt.Sprint(c.GetSlotNumber())))
+		replacement := fmt.Sprint(c.GetSlotNumber())
+		if c.Empty {
+			replaceToken(parse.TokenSlot, replacement)
+		} else {
+			replaceToken(parse.TokenSlot, shellescape.Quote(replacement))
+		}
 	}
 
 	if len(tasks) > 1 {
@@ -296,7 +336,13 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 
 				replacement := task.Task
 
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), shellescape.Quote(replacement))
+				if c.Empty {
+					c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d}`, number), replacement)
+				} else {
+					c.Command = strings.ReplaceAll(
+						c.Command, fmt.Sprintf(`{%d}`, number), shellescape.Quote(replacement),
+					)
+				}
 			}
 		}
 
@@ -342,7 +388,13 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 					return
 				}
 
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), shellescape.Quote(replacement))
+				if c.Empty {
+					c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d.}`, number), replacement)
+				} else {
+					c.Command = strings.ReplaceAll(
+						c.Command, fmt.Sprintf(`{%d.}`, number), shellescape.Quote(replacement),
+					)
+				}
 			}
 		}
 
@@ -387,8 +439,13 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 					)
 					return
 				}
-
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), shellescape.Quote(replacement))
+				if c.Empty {
+					c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d/}`, number), replacement)
+				} else {
+					c.Command = strings.ReplaceAll(
+						c.Command, fmt.Sprintf(`{%d/}`, number), shellescape.Quote(replacement),
+					)
+				}
 			}
 		}
 
@@ -432,8 +489,15 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 					)
 					return
 				}
+				replacement := filepath.Dir(task.Task)
 
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), filepath.Dir(task.Task))
+				if c.Empty {
+					c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d//}`, number), replacement)
+				} else {
+					c.Command = strings.ReplaceAll(
+						c.Command, fmt.Sprintf(`{%d//}`, number), shellescape.Quote(replacement),
+					)
+				}
 			}
 		}
 
@@ -476,7 +540,13 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 					return
 				}
 
-				c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d./}`, number), shellescape.Quote(replacement))
+				if c.Empty {
+					c.Command = strings.ReplaceAll(c.Command, fmt.Sprintf(`{%d./}`, number), replacement)
+				} else {
+					c.Command = strings.ReplaceAll(
+						c.Command, fmt.Sprintf(`{%d./}`, number), shellescape.Quote(replacement),
+					)
+				}
 			}
 		}
 	}
@@ -555,6 +625,14 @@ func (c *Command) Execute() (err error) {
 	// Make buffers for command output
 	outStr := buffStdOut.String()
 	errStr := buffStdErr.String()
+
+	if c.Config.Awk != nil {
+		outStr, err = c.Config.Awk.Execute(outStr)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
 
 	// if outStr != "" {
 	c.Print(os.Stdout, outStr)

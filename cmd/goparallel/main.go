@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/alexflint/go-arg"
+	"github.com/imarsman/goparallel/cmd/awk"
 	"github.com/imarsman/goparallel/cmd/command"
 	"github.com/imarsman/goparallel/cmd/parse"
 	"github.com/imarsman/goparallel/cmd/tasks"
@@ -56,6 +57,16 @@ var callArgs struct {
 func main() {
 	arg.MustParse(&callArgs)
 
+	var awkCommand *awk.Command
+	if callArgs.Awk != "" {
+		var err error
+		awkCommand, err = awk.NewCommand(callArgs.Awk)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
+
 	if callArgs.Slots == 0 {
 		callArgs.Slots = int64(runtime.NumCPU())
 	}
@@ -69,6 +80,7 @@ func main() {
 		Ordered:     callArgs.Ordered,
 		KeepOrder:   callArgs.KeepOrder,
 		Concurrency: callArgs.Slots,
+		Awk:         awkCommand,
 	}
 
 	// if callArgs.Command == "" {
