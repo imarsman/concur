@@ -71,7 +71,6 @@ func main() {
 
 	// Define command to run
 	var c = command.NewCommand(
-		// strings.Join(callArgs.Command, " "),
 		callArgs.Command,
 		&taskListSet,
 		config,

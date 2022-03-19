@@ -100,7 +100,7 @@ func RunCommand(c Command, taskSet []tasks.Task, wg sync.WaitGroup) (err error) 
 	ctx := context.TODO()
 
 	wg.Add(1)
-	wgRun.Add(1)
+	// wgRun.Add(1)
 
 	err = c.Prepare(taskSet)
 	if err != nil {
@@ -115,7 +115,7 @@ func RunCommand(c Command, taskSet []tasks.Task, wg sync.WaitGroup) (err error) 
 	var run = func() {
 		defer sem.Release(1)
 		defer wg.Done()
-		defer wgRun.Done()
+		// defer wgRun.Done()
 
 		err = c.Execute()
 		if err != nil {
@@ -129,7 +129,7 @@ func RunCommand(c Command, taskSet []tasks.Task, wg sync.WaitGroup) (err error) 
 	} else {
 		go run()
 	}
-	wgRun.Wait()
+	// wgRun.Wait()
 
 	return
 }
@@ -483,8 +483,6 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 					)
 					return
 				}
-				// 	task = tasks[number-1]
-				// }
 				if number > len(tasks) {
 					break
 				}
@@ -526,7 +524,6 @@ func (c *Command) Execute() (err error) {
 		if err != nil {
 			fmt.Println(cmd.String())
 			fmt.Println("got error on run", cmd.String(), err)
-			// return
 		}
 
 	} else {
