@@ -1,60 +1,53 @@
 # goparallel
 
-A parallel workalike in Go. Actually, parallel is more similar to xargs as implemented.
+A parallel workalike in `golang`, though it is not really a parallel workalike. It is more like a line processing tool with
+the option of shell execution and the application of an `awk` script. One benefit is the ability to run commands against
+input in parallel, similar to the `parallel` and `xargs` utilities.
 
-I came across the parallel command very recently and thought writing a utility along its lines would be a good way to
-explore command execution and goroutines and other concurrent tools such as mutexes and semaphors.
+`parallel` excels at producing lists of text values that can be used to do many amazing things when they are integrated
+into shell commands. The implementation of `goparallel` is more deterministic, with one predictable set of inputs for
+each line processed. There is no real re-arranging of input.
 
-I am working on this code to look into making calls in parallel using Golang. I am not sure I am invested in
-implementing the combinatorial capabilities of the original parallel tool, although I can see the value of this in
-scientific research (randomized assignment). There are some things which I may or may not implement, such as saving
-output to a directory structure.
+`goparallel` involves lists that can be used for input and those lists can be used to produce text values that are
+integrated into shell commands. `goparallel` is not as focussed on producing varied sets of values to be used in
+commands. All lists in `goparallel` are cycled through with the longest list defining how many operations to perform. If
+there is a shorter list and its members are fully used the list will cycle back to the starting point.
 
-As currently implemented, goparallel gets lists for input from twp distinct sources and in order of source; 
-
-1. from standard input as a set of lines
-2. from lists of arguments using the -a flag (you can use one or more of these and each will be a separate list)
-
-Basically, the lists are sources of input for commands run. I have kept the {1}, {2} notation from parallel as well as
-the notation used for splitting paths and files into their components. I have not implemented the complex combanitorial
-ordering logic for incoming lists. Lists are processed one set of input items per command and the length of the output
-in terms of commands run is defined by the length of the longest incoming list. Any list that reaches its end before the
-end of command runs is looped back to the first item of that list. As possible useful additions emerge I may add them.
-Things like tying one list's members to a previous one would I think require a different approach.
-
-Given that I am not a researcher carrying out randomized experiments the likely focus for this code will be allowing the
-parallel execution of shell commands and the most likely mode of use I think would be the use of a single incoming list.
-
-I've added the ability to handle input piped from stdin. This might be useful when doing things like
-transforming log data from one format to another.
-
-I've added the use of an escaping library to try to avoid causing errors with shell interpretation of commands.
-
-I really like being able to process and send along text. Shells allow this sort of direction and redirection and piping.
-goparallel allows for incoming lists to be represented and used in commands run. I am thinking of adding an awk
-interpreter in the interest in providing a way to process text in addition to just executing calls.
-
-## Similarities with parallel
-
-I have implemented the placeholder tokenization such as {} and {1} and {#} along with path and file tokens such as {.}
-and {/}.
-
-I have implemented flags allowing output from commands to be printed as blocks per command or as it it is produced by
-the execution of commands.
-
-I have added a flag to cause tasks lists to be shuffled prior to execution.
-
-I have added the ability to specify the concurrency to be used.
-
-If there are no placeholders in the command to be run they will be added and then replaced by their list values.
+List of input using the `-a` flag (which can be used repeatedly to result in separate input lists) can be arbitrary
+literal lists or expansions of file globbing pattters. For example `-a '/var/log/*log'` will result in a list of paths.
+One can also supply lists using shell calls such as 
 
 ```sh
-$ goparallel 'echo list values ' -a '1 2' -a '{4..5}'
-list values 1 4
-list values 2 5
+$ goparallel -a "$(seq 5)"
+1
+2
+3
+4
+5
 ```
 
+There is a simple sequence token that can be used as well
+
+```sh
+$ goparallel -a '{1..5}'
+2
+5
+3
+4
+1
+```
+
+`goparallel` includes the ability to send the output of either the set of incoming list items or the command run to an
+awk intepreter (using goawk).
+
+Note that the order of output is normally the result of parallel excecution and as such is random. This can be overriden.
+
 ## Tokens
+
+Tokens can be used in the command input. If command input is used the result must be a valid shell call. If no command
+is supplied the result will be a list of the incoming list values.
+
+### Tokens that can be used in the command
 
 - `{} or {1}` - list 1 item
 - `{.} or {1.}` - list 1 item without extension or same with numbered task list item
@@ -68,24 +61,189 @@ list values 2 5
   - multiple sequences can be used and for each `-a` will be added to a task list
 
 I also have to test out and decide what to do with path and file oriented placeholders like {/} and {2/} where the
-pattern is not a path or file. Currently the path and file oriented updates occur. There could be problems with this.
-One problem is 
+pattern is not a path or file. Currently the path and file oriented updates occur. It is up to the writer of the call to
+be careful not to use path and file oriented tokens on non paths or non files.
 
-## Things to implement and work on
+### Examples
 
-I need to ensure that I have done as good a job as possible to allow commands to be escaped. Commands passed to the Go
-code for goparallel first are interpreted by the shell environment (zsh has been used for testing). Some characters such
-as { and } can trigger the shell's parser, necessitating thigs like 'echo {}' instead of just echo {}.
+```sh
+$ goparallel 'echo {}' -a '{0..9}'
+7
+0
+5
+4
+2
+6
+1
+3
+9
+8
+```
 
-It would be most reliable to avoid using path and filename oriented tokens if the incoming data is not relevant for
-that. Results otherwise are unpredictable.
+will result in 10 invocations of the `echo` of the incoming list. If there is no
+command the output will just be the input. For example
+
+```sh
+$ goparallel -a '{0..9}'
+0
+3
+8
+9
+2
+7
+5
+6
+4
+1
+```
+
+This will show the sequence numbers and items for a list
+
+
+```sh
+$ goparallel 'echo {#} {}' -a '{0..9}' -o
+1 0
+2 1
+3 2
+4 3
+5 4
+6 5
+7 6
+8 7
+9 8
+10 9
+```
+
+Note the use of the `-o` (ordered) flag.
+
+See below for how to use more than one argument list and numbered tokens to produce output
+
+```sh
+$ goparallel 'echo {#} {1} {2}' -a '{0..9}' -a '{10..19}' -o
+1 0 10
+2 1 11
+3 2 12
+4 3 13
+5 4 14
+6 5 15
+7 6 16
+8 7 17
+9 8 18
+10 9 19
+```
+
+### awk scripts
+
+`awk` scripts can be run on the output of the initial stage (either the provision of all input fields or the running of
+a command).
+
+```sh
+$ goparallel -A '{FS="\\s+"; OFS=","} {print "got "$1}' -a '{1..10}'
+got 2
+got 8
+got 10
+got 1
+got 3
+got 6
+got 4
+got 7
+got 5
+got 9
+```
+
+```sh
+ian@ian-macbookair ~/git/goparallel/cmd/command ‹main●›
+$ cat test.txt | goparallel 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}'
+strawberry,red,3
+apple,red,4
+```
+
+Note that empty lines are by default skipped. That can be overriden with a flag
+
+Here is the `test.text` file
+
+```
+name       color  amount
+apple      red    4
+banana     yellow 6
+strawberry red    3
+raspberry  red    99
+grape      purple 10
+apple      green  8
+plum       purple 2
+kiwi       brown  4
+potato     brown  9
+pineapple  yellow 5
+```
+
+```sh
+$ cat test.txt | goparallel 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}' -E
+
+
+raspberry,red,99
+strawberry,red,3
+
+
+apple,red,4
+
+
+
+
+```
+
+Here is an ordered version of the previous no blank lines and no filtering
+
+```sh
+$ cat test.txt | goparallel 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}' -o
+name,color,amount
+apple,red,4
+banana,yellow,6
+strawberry,red,3
+raspberry,red,99
+grape,purple,10
+apple,green,8
+plum,purple,2
+kiwi,brown,4
+potato,brown,9
+pineapple,yellow,5
+```
+
+I will find out if this is a useful utility. There are some interesting uses, including the ability to accept the otuput
+of `tail`
+
+```sh
+tail -f /var/log/*log|goparallel -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}'
+==>,/var/log/acroUpdaterTools.log,<==
+Jan,12,,2022
+installer:,Upgrading,at
+installer:,The,upgrade
+Jan,12,,2022
+Jan,12,,2022
+Jan,12,,2022
+Jan,12,,2022
+Jan,12,,2022
+Jan,12,,2022
+==>,/var/log/fsck_apfs.log,<==
+/dev/rdisk3s3:,fsck_apfs,started
+/dev/rdisk3s3:,**,QUICKCHECK
+/dev/rdisk3s3:,fsck_apfs,completed
+/dev/rdisk3s3:,fsck_apfs,started
+/dev/rdisk3s3:,**,QUICKCHECK
+/dev/rdisk3s3:,fsck_apfs,completed
+...
+...
+```
+
+In the above example, output can be ordered by input sequence and blank lines can be printed.
+
+I will very likely find errors and bugs.
 
 ## Usage
 
 ```
-$ goparallel -h                                                                                                                        130 ↵
-Usage: goparallel [--arguments ARGUMENTS] [--dry-run] [--slots SLOTS] [--shuffle] 
-                  [--ordered] [--keep-order] [--print-empty] [COMMAND]
+$ goparallel -h
+Usage: goparallel [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] 
+                  [--shuffle] [--ordered] [--keep-order] [--print-empty] [COMMAND]
 
 Positional arguments:
   COMMAND
@@ -93,6 +251,7 @@ Positional arguments:
 Options:
   --arguments ARGUMENTS, -a ARGUMENTS
                          lists of arguments
+  --awk AWK, -A AWK      process using supplied awk script
   --dry-run, -d          show command to run but don't run
   --slots SLOTS, -s SLOTS
                          number of parallel tasks [default: 8]
@@ -100,7 +259,8 @@ Options:
   --ordered, -o          run tasks in their incoming order
   --keep-order, -k       don't keep output for calls separate
   --print-empty, -E      print empty lines
-  --help, -h             display this help and exit```
+  --help, -h             display this help and exit
+```
 
 Ping some hosts and waith for full output from each before printing.
 
