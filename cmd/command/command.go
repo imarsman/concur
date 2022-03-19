@@ -53,6 +53,7 @@ type Command struct {
 	Slots    int64
 	Config   Config
 	Sequence int64
+	Empty    bool
 }
 
 // NewCommand create a new command struct instance
@@ -98,7 +99,6 @@ var count int = 0
 // RunCommand run all items in task lists against RunCommand
 func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error) {
 	count++
-	// fmt.Println("count", count)
 
 	ctx := context.Background()
 
@@ -191,6 +191,7 @@ func getParams(regEx *regexp.Regexp, input string) (paramsMap map[string]string)
 // Prepare replace placeholders with data from incoming
 func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 	defer c.GetSlotNumber()
+	c.Empty = false
 
 	sequence := c.GetSequence()
 
@@ -202,7 +203,8 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 	defaultTask := tasks[0]
 
 	if strings.TrimSpace(c.Command) == "" {
-		c.Command = "echo"
+		c.Empty = true
+		c.Command = ""
 	}
 
 	if !strings.Contains(c.Command, `{`) {
@@ -220,6 +222,7 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 				}
 			}
 		}
+
 		c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
 	}
 
@@ -527,21 +530,24 @@ func (c *Command) Execute() (err error) {
 	var buffStdOut bytes.Buffer
 	var buffStdErr bytes.Buffer
 
-	cmd := exec.Command("bash", "-c", c.Command)
-
-	cmd.Stdout = &buffStdOut
-	cmd.Stderr = &buffStdErr
-
-	// If we are on a dry run print out what would be run, otherwise run the command.
-	if !c.Config.DryRun {
-		err = cmd.Run()
-		if err != nil {
-			fmt.Println(cmd.String())
-			fmt.Println("got error on run", cmd.String(), err)
-		}
-
+	if c.Empty {
+		buffStdOut.WriteString(c.Command)
 	} else {
-		fmt.Println(cmd.String())
+		cmd := exec.Command("bash", "-c", c.Command)
+
+		cmd.Stdout = &buffStdOut
+		cmd.Stderr = &buffStdErr
+		// If we are on a dry run print out what would be run, otherwise run the command.
+		if !c.Config.DryRun {
+			err = cmd.Run()
+			if err != nil {
+				fmt.Println(cmd.String())
+				fmt.Println("got error on run", cmd.String(), err)
+			}
+
+		} else {
+			fmt.Println(cmd.String())
+		}
 	}
 
 	// Make buffers for command output
