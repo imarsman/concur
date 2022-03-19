@@ -5,28 +5,32 @@ A parallel workalike in Go. Actually, parallel is more similar to xargs as imple
 I came across the parallel command very recently and thought writing a utility along its lines would be a good way to
 explore command execution and goroutines and other concurrent tools such as mutexes and semaphors.
 
-I am working on this code to look into calling executables in parallel using Golang. I am not sure I am invested in
+I am working on this code to look into making calls in parallel using Golang. I am not sure I am invested in
 implementing the combinatorial capabilities of the original parallel tool, although I can see the value of this in
 scientific research (randomized assignment). There are some things which I may or may not implement, such as saving
 output to a directory structure.
 
-As currently implemented, goparallel gets lists for input from three distinct sources and in order of source; 
+As currently implemented, goparallel gets lists for input from twp distinct sources and in order of source; 
 
 1. from standard input as a set of lines
 2. from lists of arguments using the -a flag (you can use one or more of these and each will be a separate list)
 
-The parallel tool allows files to be specified to be read in line by line and the lines sent through the command. I will
-find a way to make this work clearly.
-
 Basically, the lists are sources of input for commands run. I have kept the {1}, {2} notation from parallel as well as
 the notation used for splitting paths and files into their components. I have not implemented the complex combanitorial
-ordering logic for incoming lists. Lists are processed one item per command and the length of the output in terms of
-commands run is defined by the length of the longest incoming list. Any list that reaches its end before the end of
-command runs is looped back to the first item of that list. As possible useful additions emerge I may add them. Things
-like tying one list's members to a previous one would I think require a different approach.
+ordering logic for incoming lists. Lists are processed one set of input items per command and the length of the output
+in terms of commands run is defined by the length of the longest incoming list. Any list that reaches its end before the
+end of command runs is looped back to the first item of that list. As possible useful additions emerge I may add them.
+Things like tying one list's members to a previous one would I think require a different approach.
 
 Given that I am not a researcher carrying out randomized experiments the likely focus for this code will be allowing the
 parallel execution of shell commands and the most likely mode of use I think would be the use of a single incoming list.
+
+I've added the ability to handle piped input from standard input. This might be useful when doing things like
+transforming log data from one format to another.
+
+I really like being able to process and send along text. Shells allow this sort of direction and redirection and piping.
+goparallel allows for incoming lists to be represented and used in commands run. I am thinking of adding an awk
+interpreter in the interest in providing a way to process text in addition to just executing calls.
 
 ## Similarities with parallel
 
@@ -77,9 +81,9 @@ that. Results otherwise are unpredictable.
 ## Usage
 
 ```
-$ goparallel -h
-Usage: goparallel [--arguments ARGUMENTS] [--dry-run] [--slots SLOTS] 
-                  [--shuffle] [--ordered] [--keep-order] [COMMAND]
+$ goparallel -h                                                                                                                        130 ↵
+Usage: goparallel [--arguments ARGUMENTS] [--dry-run] [--slots SLOTS] [--shuffle] 
+                  [--ordered] [--keep-order] [--print-empty] [COMMAND]
 
 Positional arguments:
   COMMAND
@@ -89,12 +93,12 @@ Options:
                          lists of arguments
   --dry-run, -d          show command to run but don't run
   --slots SLOTS, -s SLOTS
-                         number of parallel tasks
+                         number of parallel tasks [default: 8]
   --shuffle, -S          shuffle tasks prior to running
   --ordered, -o          run tasks in their incoming order
   --keep-order, -k       don't keep output for calls separate
-  --help, -h             display this help and exit
-```
+  --print-empty, -E      print empty lines
+  --help, -h             display this help and exit```
 
 Ping some hosts and waith for full output from each before printing.
 
