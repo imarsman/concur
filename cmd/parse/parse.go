@@ -16,7 +16,7 @@ const (
 	TokenSlot                 = `{%}`
 )
 
-var REAllTokens = regexp.MustCompile(`.*\{[^\}]*\}.*`)
+var REAllTokens = regexp.MustCompile(`\{[^\}]*\}`)
 
 // REToken a catch-all token
 var REToken = regexp.MustCompile(`.*\{\d*[\/\.]*\}.*`)

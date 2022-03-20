@@ -164,13 +164,13 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 	if strings.TrimSpace(c.Command) == "" {
 		c.Empty = true
 	} else {
-		// allow no command to be run but line reformatted
+		// allow no command to be run but line reformatted if the only space delimite things in the line are {} type
+		// tokens
 		c.Empty = true
 		parts := strings.Split(c.Command, " ")
 		for _, part := range parts {
 			part = strings.TrimSpace(part)
-			if !parse.REAllTokens.MatchString(c.Command) {
-				fmt.Println("does not match", c.Command, parse.REAllTokens.String())
+			if !parse.REAllTokens.MatchString(part) {
 				c.Empty = false
 				break
 			}
@@ -178,7 +178,7 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 	}
 
 	// look for tokens except for {#} and {%}
-	foundToken := parse.REToken.MatchString(c.Command)
+	var foundToken = parse.REToken.MatchString(c.Command)
 
 	// If no tokens, supply them
 	// With an empty command the result will be the placement of the incoming value
@@ -634,7 +634,6 @@ func (c *Command) Execute() (err error) {
 			fmt.Println(strings.TrimSpace(cmd.String()))
 			return
 		}
-
 		outStr = buffStdOut.String()
 		errStr = buffStdErr.String()
 	}
@@ -658,7 +657,13 @@ func (c *Command) Execute() (err error) {
 			c.Print(os.Stdout, outStr)
 		}
 	} else {
-		c.Print(os.Stdout, outStr)
+		if len(outStr) > 0 {
+			c.Print(os.Stdout, outStr)
+		} else if len(outStr) == 0 {
+			if c.Config.PrintEmpty {
+				c.Print(os.Stdout, outStr)
+			}
+		}
 		if errStr != "" {
 			c.Print(os.Stderr, errStr)
 		}
