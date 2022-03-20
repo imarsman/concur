@@ -31,3 +31,13 @@ tasks:
       - cmd: rm -f ../../build/{{.buildname}}
         ignore_error: true
       - go build -o ../../build/{{.buildname}} .
+  test-image:
+    desc: a test of calling goparallel to copy an image then remove it
+    dir: test/image
+    cmds:
+      - task: install
+      # - convert -size 30x30 xc:   +noise Random   random.png
+      - goparallel 'cp {1} {1./}{2}.png' -a 'random.png' -a '{1..10}'
+      - ls -lah
+      - goparallel 'rm {1./}{2}.png' -a 'random.png' -a '{1..10}'
+      - ls -lah
