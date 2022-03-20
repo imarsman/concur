@@ -64,6 +64,13 @@ I also have to test out and decide what to do with path and file oriented placeh
 pattern is not a path or file. Currently the path and file oriented updates occur. It is up to the writer of the call to
 be careful not to use path and file oriented tokens on non paths or non files.
 
+### Optimizations
+
+If only tokens are used in the command string they will be substituted on but no command will be run. For example,
+`goparallel '{#}'` will have `{}` tokens inserted for each incoming item but that is the extent. It can take very much
+longer to run a simple `echo` command on hundreds of thousands of lines (minutes compared to seconds). The substituted
+command line will be used as the input for any awk script run.
+
 ### Examples
 
 ```sh
