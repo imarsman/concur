@@ -163,6 +163,18 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 	// If empty, flag that
 	if strings.TrimSpace(c.Command) == "" {
 		c.Empty = true
+	} else {
+		// allow no command to be run but line reformatted
+		c.Empty = true
+		parts := strings.Split(c.Command, " ")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if !parse.REAllTokens.MatchString(c.Command) {
+				fmt.Println("does not match", c.Command, parse.REAllTokens.String())
+				c.Empty = false
+				break
+			}
+		}
 	}
 
 	// look for tokens except for {#} and {%}
