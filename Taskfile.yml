@@ -36,8 +36,11 @@ tasks:
     dir: test/image
     cmds:
       - task: install
-      # - convert -size 30x30 xc:   +noise Random   random.png
-      - goparallel 'cp {1} {1./}{2}.png' -a 'random.png' -a '{1..10}'
+      # - convert -size 30x30 xc: +noise Random random.png
+      # - goparallel 'convert -size 30x30 xc: +noise Random random{}.png && echo convert' -a '{1..10}'
+      - ls -lah
+      - goparallel 'rm -f {1./}{2}.png' -a 'random.png' -a '{1..10}'
+      - goparallel 'cp -p {1} {1./}{2}.png' -a 'random.png' -a '{1..10}'
       - ls -lah
       - goparallel 'rm {1./}{2}.png' -a 'random.png' -a '{1..10}'
       - ls -lah
