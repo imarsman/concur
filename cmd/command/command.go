@@ -153,12 +153,13 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 
 	sequence := c.GetSequence()
 
-	// tasks, err := c.TaskListSet.NextAll()
 	if err != nil {
 		return
 	}
 
 	defaultTask := tasks[0]
+	// If there is something besides a token but no tokens we don't want to interpolate tokens later
+	var commandStringEmpty = true
 
 	// If empty, flag that
 	if strings.TrimSpace(c.Command) == "" {
@@ -171,6 +172,7 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 		for _, part := range parts {
 			part = strings.TrimSpace(part)
 			if !parse.REAllTokens.MatchString(part) {
+				commandStringEmpty = false
 				c.Empty = false
 				break
 			}
@@ -198,10 +200,13 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 			}
 		}
 
-		if c.Command == "" {
-			c.Command = fmt.Sprintf("%s", strings.TrimSpace(sb.String()))
-		} else {
-			c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
+		// If the incoming command started with no non token code
+		if commandStringEmpty {
+			if c.Command == "" {
+				c.Command = fmt.Sprintf("%s", strings.TrimSpace(sb.String()))
+			} else {
+				c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
+			}
 		}
 	}
 
@@ -619,7 +624,21 @@ func (c *Command) Execute() (err error) {
 		var buffStdOut bytes.Buffer
 		var buffStdErr bytes.Buffer
 
+		// Could split command to be run into parts with string.Fields()
+		// and then use those in args
+
+		// var parts []string
+		// parts = append(parts, "-c")
+
+		// var bits = strings.Fields(c.Command)
+
+		// parts = append(parts, "'")
+		// parts = append(parts, bits...)
+		// parts = append(parts, "'")
+
 		cmd := exec.Command("bash", "-c", c.Command)
+		// cmd := exec.Command("bash", "-c", parts...)
+		// cmd := exec.Command("bash", parts...)
 
 		cmd.Stdout = &buffStdOut
 		cmd.Stderr = &buffStdErr
