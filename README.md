@@ -273,8 +273,8 @@ I will very likely find errors and bugs.
 
 ```
 $ goparallel -h
-Usage: goparallel [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] 
-                  [--shuffle] [--ordered] [--keep-order] [--print-empty] [COMMAND]
+Usage: goparallel [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] [--shuffle] 
+                  [--ordered] [--keep-order] [--print-empty] [--exit-on-empty] [COMMAND]
 
 Positional arguments:
   COMMAND
@@ -282,37 +282,41 @@ Positional arguments:
 Options:
   --arguments ARGUMENTS, -a ARGUMENTS
                          lists of arguments
-  --awk AWK, -A AWK      process using supplied awk script
+  --awk AWK, -A AWK      process using awk script or a script filename.
   --dry-run, -d          show command to run but don't run
   --slots SLOTS, -s SLOTS
                          number of parallel tasks [default: 8]
   --shuffle, -S          shuffle tasks prior to running
   --ordered, -o          run tasks in their incoming order
   --keep-order, -k       don't keep output for calls separate
-  --print-empty, -E      print empty lines
+  --print-empty, -P      print empty lines
+  --exit-on-empty, -E    exit on first error
   --help, -h             display this help and exit
 ```
 
-Ping some hosts and waith for full output from each before printing.
+Ping some hosts and waith for full output from each before printing. Notice
+the use of the -k flag which forces each command's output to be grouped.
 
 ```sh
-goparallel 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com'
-64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.057 ms
+goparallel 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com' -k
+PING 127.0.0.1 (127.0.0.1): 56 data bytes
+64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.084 ms
 
 --- 127.0.0.1 ping statistics ---
 1 packets transmitted, 1 packets received, 0.0% packet loss
-round-trip min/avg/max/stddev = 0.057/0.057/0.057/0.000 ms
-PING cisco.com (72.163.4.185): 56 data bytes
-64 bytes from 72.163.4.185: icmp_seq=0 ttl=239 time=78.342 ms
-
---- cisco.com ping statistics ---
-1 packets transmitted, 1 packets received, 0.0% packet loss
-round-trip min/avg/max/stddev = 78.342/78.342/78.342/0.000 ms
-PING ibm.com (184.86.42.71): 56 data bytes
-64 bytes from 184.86.42.71: icmp_seq=0 ttl=56 time=24.171 ms
+round-trip min/avg/max/stddev = 0.084/0.084/0.084/0.000 ms
+PING ibm.com (104.67.113.240): 56 data bytes
+64 bytes from 104.67.113.240: icmp_seq=0 ttl=56 time=29.846 ms
 
 --- ibm.com ping statistics ---
 1 packets transmitted, 1 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 29.846/29.846/29.846/0.000 ms
+PING cisco.com (72.163.4.185): 56 data bytes
+64 bytes from 72.163.4.185: icmp_seq=0 ttl=239 time=68.559 ms
+
+--- cisco.com ping statistics ---
+1 packets transmitted, 1 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 68.559/68.559/68.559/0.000 ms
 ```
 
 ### Escaping command shell commands

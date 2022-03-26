@@ -639,14 +639,17 @@ func (c *Command) Execute() (err error) {
 				}
 			}
 		} else {
+			// with dry-run print out command and return
 			fmt.Println(strings.TrimSpace(cmd.String()))
 			return
 		}
+		// Don't print anything now. Wait until awk script stage.
 		outStr = buffStdOut.String()
 		errStr = buffStdErr.String()
 	}
 
 	// Run awk against what has been produced so far
+	// Print out result
 	if c.Config.Awk != nil {
 		outStr, err = c.Config.Awk.Execute(outStr)
 		if err != nil {
@@ -667,6 +670,7 @@ func (c *Command) Execute() (err error) {
 			c.Print(os.Stdout, outStr)
 		}
 	} else {
+		// No awk script so print output from command run
 		if len(outStr) > 0 {
 			c.Print(os.Stdout, outStr)
 		} else if len(outStr) == 0 {
