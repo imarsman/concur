@@ -41,15 +41,16 @@ func readLines(path string) ([]string, error) {
 
 // callArgs command line arguments
 var callArgs struct {
-	Command    string   `arg:"positional"`
-	Arguments  []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
-	Awk        string   `arg:"-A,--awk" help:"process using supplied awk script"`
-	DryRun     bool     `arg:"-d,--dry-run" help:"show command to run but don't run"`
-	Slots      int64    `arg:"-s,--slots" default:"8" help:"number of parallel tasks"`
-	Shuffle    bool     `arg:"-S,--shuffle" help:"shuffle tasks prior to running"`
-	Ordered    bool     `arg:"-o,--ordered" help:"run tasks in their incoming order"`
-	KeepOrder  bool     `arg:"-k,--keep-order" help:"don't keep output for calls separate"`
-	PrintEmpty bool     `arg:"-E,--print-empty" help:"print empty lines"`
+	Command     string   `arg:"positional"`
+	Arguments   []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
+	Awk         string   `arg:"-A,--awk" help:"process using supplied awk script"`
+	DryRun      bool     `arg:"-d,--dry-run" help:"show command to run but don't run"`
+	Slots       int64    `arg:"-s,--slots" default:"8" help:"number of parallel tasks"`
+	Shuffle     bool     `arg:"-S,--shuffle" help:"shuffle tasks prior to running"`
+	Ordered     bool     `arg:"-o,--ordered" help:"run tasks in their incoming order"`
+	KeepOrder   bool     `arg:"-k,--keep-order" help:"don't keep output for calls separate"`
+	PrintEmpty  bool     `arg:"-P,--print-empty" help:"print empty lines"`
+	ExitOnError bool     `arg:"-E,--exit-on-empty" help:"exit on first error"`
 }
 
 func main() {
@@ -78,6 +79,7 @@ func main() {
 		Concurrency: callArgs.Slots,
 		Awk:         awkCommand,
 		PrintEmpty:  callArgs.PrintEmpty,
+		ExitOnError: callArgs.ExitOnError,
 	}
 
 	taskListSet := tasks.NewTaskListSet()

@@ -43,6 +43,7 @@ type Config struct {
 	KeepOrder   bool
 	Concurrency int64
 	PrintEmpty  bool
+	ExitOnError bool
 }
 
 func init() {
@@ -624,21 +625,7 @@ func (c *Command) Execute() (err error) {
 		var buffStdOut bytes.Buffer
 		var buffStdErr bytes.Buffer
 
-		// Could split command to be run into parts with string.Fields()
-		// and then use those in args
-
-		// var parts []string
-		// parts = append(parts, "-c")
-
-		// var bits = strings.Fields(c.Command)
-
-		// parts = append(parts, "'")
-		// parts = append(parts, bits...)
-		// parts = append(parts, "'")
-
 		cmd := exec.Command("bash", "-c", c.Command)
-		// cmd := exec.Command("bash", "-c", parts...)
-		// cmd := exec.Command("bash", parts...)
 
 		cmd.Stdout = &buffStdOut
 		cmd.Stderr = &buffStdErr
@@ -663,7 +650,9 @@ func (c *Command) Execute() (err error) {
 		if err != nil {
 			errStr := fmt.Sprintf("%v", err)
 			c.Print(os.Stderr, errStr)
-			os.Exit(1)
+			if c.Config.ExitOnError {
+				os.Exit(1)
+			}
 		}
 		if outStr == "" && c.Config.PrintEmpty {
 			if c.Config.PrintEmpty {
