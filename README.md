@@ -17,6 +17,33 @@ List of input using the `-a` flag (which can be used repeatedly to result in sep
 literal lists or expansions of file globbing pattters. For example `-a '/var/log/*log'` will result in a list of paths.
 One can also supply lists using shell calls such as 
 
+## Usage
+
+```
+$ goparallel -h
+Usage: goparallel [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] [--shuffle] 
+                  [--ordered] [--keep-order] [--print-empty] [--exit-on-empty] [COMMAND]
+
+Positional arguments:
+  COMMAND
+
+Options:
+  --arguments ARGUMENTS, -a ARGUMENTS
+                         lists of arguments
+  --awk AWK, -A AWK      process using awk script or a script filename.
+  --dry-run, -d          show command to run but don't run
+  --slots SLOTS, -s SLOTS
+                         number of parallel tasks [default: 8]
+  --shuffle, -S          shuffle tasks prior to running
+  --ordered, -o          run tasks in their incoming order
+  --keep-order, -k       don't keep output for calls separate
+  --print-empty, -P      print empty lines
+  --exit-on-empty, -E    exit on first error
+  --help, -h             display this help and exit
+```
+
+## Examples
+
 ```sh
 $ goparallel -a "$(seq 5)"
 1
@@ -268,31 +295,6 @@ pineapple yellow 5 b
 ```
 
 I will very likely find errors and bugs.
-
-## Usage
-
-```
-$ goparallel -h
-Usage: goparallel [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] [--shuffle] 
-                  [--ordered] [--keep-order] [--print-empty] [--exit-on-empty] [COMMAND]
-
-Positional arguments:
-  COMMAND
-
-Options:
-  --arguments ARGUMENTS, -a ARGUMENTS
-                         lists of arguments
-  --awk AWK, -A AWK      process using awk script or a script filename.
-  --dry-run, -d          show command to run but don't run
-  --slots SLOTS, -s SLOTS
-                         number of parallel tasks [default: 8]
-  --shuffle, -S          shuffle tasks prior to running
-  --ordered, -o          run tasks in their incoming order
-  --keep-order, -k       don't keep output for calls separate
-  --print-empty, -P      print empty lines
-  --exit-on-empty, -E    exit on first error
-  --help, -h             display this help and exit
-```
 
 Ping some hosts and waith for full output from each before printing. Notice
 the use of the -k flag which forces each command's output to be grouped.
