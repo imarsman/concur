@@ -633,8 +633,10 @@ func (c *Command) Execute() (err error) {
 		if !c.Config.DryRun {
 			err = cmd.Run()
 			if err != nil {
-				errStr = fmt.Sprintf("%v", err)
-				c.Print(os.Stderr, errStr)
+				if c.Config.ExitOnError {
+					c.Print(os.Stderr, fmt.Sprintf("%v", err))
+					os.Exit(1)
+				}
 			}
 		} else {
 			fmt.Println(strings.TrimSpace(cmd.String()))
