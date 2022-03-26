@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -52,6 +53,7 @@ var callArgs struct {
 	KeepOrder   bool     `arg:"-k,--keep-order" help:"don't keep output for calls separate"`
 	PrintEmpty  bool     `arg:"-P,--print-empty" help:"print empty lines"`
 	ExitOnError bool     `arg:"-E,--exit-on-empty" help:"exit on first error"`
+	SplitAtNull bool     `arg:"-0,--null" help:"split at null character"`
 }
 
 func main() {
@@ -155,6 +157,31 @@ func main() {
 
 	stdin := false
 
+	// splitAtNull split at null terminator
+	var splitAtNull = func(input []byte, atEOF bool) (advance int, token []byte, err error) {
+		searchBytes := []byte("\000")
+		searchLen := len(searchBytes)
+		dataLen := len(input)
+
+		// Return nothing if at end of file and no data passed
+		if atEOF && dataLen == 0 {
+			return 0, nil, nil
+		}
+
+		// Find next separator and return token
+		if i := bytes.Index(input, searchBytes); i >= 0 {
+			return i + searchLen, input[0:i], nil
+		}
+
+		// If we're at EOF, we have a final, non-terminated line. Return it.
+		if atEOF {
+			return dataLen, input, nil
+		}
+
+		// Request more data.
+		return 0, nil, nil
+	}
+
 	// Use stdin if it is available
 	// It will be the first task list if it is available. If there are other task lists they can be used as additional
 	// task items.
@@ -164,7 +191,11 @@ func main() {
 		var scanner = bufio.NewScanner(os.Stdin)
 
 		// Tell scanner to scan by lines.
-		scanner.Split(bufio.ScanLines)
+		if callArgs.SplitAtNull {
+			scanner.Split(splitAtNull)
+		} else {
+			scanner.Split(bufio.ScanLines)
+		}
 
 		var item string
 		for scanner.Scan() {

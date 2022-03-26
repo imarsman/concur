@@ -39,8 +39,12 @@ Options:
   --keep-order, -k       don't keep output for calls separate
   --print-empty, -P      print empty lines
   --exit-on-empty, -E    exit on first error
+  --print0, -0           split at null character
   --help, -h             display this help and exit
 ```
+
+Split at null is apparently useful if sending in filenames that contain newlines. The null character can then be used on
+the recieving side to split by the null character and get the newlines. This is an edge case but was fun to add.
 
 ## Examples
 
@@ -185,11 +189,15 @@ got 5
 got 9
 ```
 
+In this example awk is used as a filter for lines. If the `-P` is used, empty
+lines are printed.
+
 ```sh
 ian@ian-macbookair ~/git/goparallel/cmd/command ‹main●›
-$ cat test.txt | goparallel 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}'
-strawberry,red,3
+cat test.txt | goparallel -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}'
 apple,red,4
+strawberry,red,3
+raspberry,red,99
 ```
 
 Note that empty lines are by default skipped. That can be overriden with a flag
@@ -243,10 +251,10 @@ pineapple,yellow,5
 ```
 
 I will find out if this is a useful utility. There are some interesting uses, including the ability to accept the otuput
-of `tail`
+of `tail -f`. awk works with this as well, but goawk does not currently.
 
 ```sh
-$ tail -f /var/log/*log|goparallel -A 'BEGIN {FS="\\s+"; OFS=","} /completed/ {print $0}' -o
+$ tail -f /var/log/*log | goparallel -A 'BEGIN {FS="\\s+"; OFS=","} /completed/ {print $0}' -o
 /dev/rdisk3s3: fsck_apfs completed at Mon Mar  7 14:16:56 2022
 /dev/rdisk3s3: fsck_apfs completed at Wed Mar 16 22:00:41 2022
 fsck_apfs completed at Wed Mar 16 22:00:41 2022
@@ -255,7 +263,7 @@ fsck_apfs completed at Wed Mar 16 22:00:41 2022
 ```
 
 ```sh
-tail -f /var/log/*log|goparallel -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}'
+tail -f /var/log/*log | goparallel -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}'
 ==>,/var/log/acroUpdaterTools.log,<==
 Jan,12,,2022
 installer:,Upgrading,at
