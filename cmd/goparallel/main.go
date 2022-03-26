@@ -156,7 +156,8 @@ func main() {
 	stdin := false
 
 	// Use stdin if it is available
-	// It will be the first task list if it is available
+	// It will be the first task list if it is available. If there are other task lists they can be used as additional
+	// task items.
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		stdin = true
@@ -169,10 +170,7 @@ func main() {
 		for scanner.Scan() {
 			item = scanner.Text()
 			item = strings.TrimSpace(item)
-			// If we have just stdin and no -a lists handle them as they come
-			// This may not always work if stdin continues and other lists have been specified
-			// Probably need to allow for -a lists to be specified and incorporate them on the fly.
-			// if len(callArgs.Arguments) == 0 {
+			// If we have just stdin and no -a lists handle them as they come.
 			if len(item) == 0 {
 				// Print out empty lines if that has been flagged
 				if callArgs.PrintEmpty {
@@ -200,7 +198,10 @@ func main() {
 			c.SequenceIncr()
 		}
 	}
+
+	// If we are not getting stdin run through and process all non-stdin list items
 	if !stdin {
+		// Run through as many iterations as the longest list
 		for i := 0; i < taskListSet.Max(); i++ {
 			wg.Add(1)
 			tasks, err := taskListSet.NextAll()
