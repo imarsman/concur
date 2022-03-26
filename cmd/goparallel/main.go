@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -43,7 +44,7 @@ func readLines(path string) ([]string, error) {
 var callArgs struct {
 	Command     string   `arg:"positional"`
 	Arguments   []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
-	Awk         string   `arg:"-A,--awk" help:"process using supplied awk script"`
+	Awk         string   `arg:"-A,--awk" help:"process using awk script or a script filename."`
 	DryRun      bool     `arg:"-d,--dry-run" help:"show command to run but don't run"`
 	Slots       int64    `arg:"-s,--slots" default:"8" help:"number of parallel tasks"`
 	Shuffle     bool     `arg:"-S,--shuffle" help:"shuffle tasks prior to running"`
@@ -58,8 +59,19 @@ func main() {
 
 	var awkCommand *awk.Command
 	if callArgs.Awk != "" {
+		awkScript := callArgs.Awk
+		if !strings.Contains(callArgs.Awk, " ") {
+			if _, err := os.Stat(callArgs.Awk); err == nil {
+				b, err := ioutil.ReadFile(callArgs.Awk)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				awkScript = string(b)
+			}
+		}
 		var err error
-		awkCommand, err = awk.NewCommand(callArgs.Awk)
+		awkCommand, err = awk.NewCommand(awkScript)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
