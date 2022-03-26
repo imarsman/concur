@@ -60,7 +60,8 @@ func main() {
 	var awkCommand *awk.Command
 	if callArgs.Awk != "" {
 		awkScript := callArgs.Awk
-		if !strings.Contains(callArgs.Awk, " ") {
+		// If there is a space in the value it is probably not a file
+		if !strings.Contains(callArgs.Awk, "{") {
 			if _, err := os.Stat(callArgs.Awk); err == nil {
 				b, err := ioutil.ReadFile(callArgs.Awk)
 				if err != nil {
