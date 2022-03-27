@@ -4,7 +4,7 @@ version: "3"
 
 vars:
   targetbin: ~/bin
-  buildname: goparallel
+  buildname: concur
   dir: >
     {{.DIR}}
 
@@ -32,15 +32,15 @@ tasks:
         ignore_error: true
       - go build -o ../../build/{{.buildname}} .
   test-image:
-    desc: a test of calling goparallel to copy an image then remove it
+    desc: a test of calling concur to copy an image then remove it
     dir: test/image
     cmds:
       - task: install
       # - convert -size 30x30 xc: +noise Random random.png
-      # - goparallel 'convert -size 30x30 xc: +noise Random random{}.png && echo convert' -a '{1..10}'
+      # - concur 'convert -size 30x30 xc: +noise Random random{}.png && echo convert' -a '{1..10}'
       - ls -lah
-      - goparallel 'rm -f {1./}{2}.png' -a 'random.png' -a '{1..10}'
-      - goparallel 'cp -p {1} {1./}{2}.png' -a 'random.png' -a '{1..10}'
+      - concur 'rm -f {1./}{2}.png' -a 'random.png' -a '{1..10}'
+      - concur 'cp -p {1} {1./}{2}.png' -a 'random.png' -a '{1..10}'
       - ls -lah
-      - goparallel 'rm {1./}{2}.png' -a 'random.png' -a '{1..10}'
+      - concur 'rm {1./}{2}.png' -a 'random.png' -a '{1..10}'
       - ls -lah

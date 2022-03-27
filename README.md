@@ -1,16 +1,16 @@
-# goparallel
+# concur
 
 A parallel workalike in `golang`, though it is not really a parallel workalike. It is more like a line processing tool with
 the option of shell execution and the application of an `awk` script. One benefit is the ability to run commands against
 input in parallel, similar to the `parallel` and `xargs` utilities.
 
 `parallel` excels at producing lists of text values that can be used to do many amazing things when they are integrated
-into shell commands. The implementation of `goparallel` is more deterministic, with one predictable set of inputs for
+into shell commands. The implementation of `concur` is more deterministic, with one predictable set of inputs for
 each line processed. There is no real re-arranging of input lists beyond randomization.
 
-`goparallel` involves lists that can be used for input and those lists can be used to produce text values that are
-integrated into shell commands. `goparallel` is not as focussed on producing varied sets of values to be used in
-commands. All lists in `goparallel` are cycled through with the longest list defining how many operations to perform. If
+`concur` involves lists that can be used for input and those lists can be used to produce text values that are
+integrated into shell commands. `concur` is not as focussed on producing varied sets of values to be used in
+commands. All lists in `concur` are cycled through with the longest list defining how many operations to perform. If
 there is a shorter list and its members are fully used the list will cycle back to the starting point.
 
 List of input using the `-a` flag (which can be used repeatedly to result in separate input lists) can be arbitrary
@@ -20,8 +20,8 @@ One can also supply lists using shell calls such as
 ## Usage
 
 ```
-$ goparallel -h
-Usage: goparallel [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] [--shuffle] 
+$ concur -h
+Usage: concur [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] [--shuffle] 
                   [--ordered] [--keep-order] [--print-empty] [--exit-on-empty] [COMMAND]
 
 Positional arguments:
@@ -49,7 +49,7 @@ the recieving side to split by the null character and get the newlines. This is 
 ## Examples
 
 ```sh
-$ goparallel -a "$(seq 5)"
+$ concur -a "$(seq 5)"
 1
 2
 3
@@ -60,7 +60,7 @@ $ goparallel -a "$(seq 5)"
 There is a simple sequence token that can be used as well
 
 ```sh
-$ goparallel -a '{1..5}'
+$ concur -a '{1..5}'
 2
 5
 3
@@ -68,7 +68,7 @@ $ goparallel -a '{1..5}'
 1
 ```
 
-`goparallel` includes the ability to send the output of either the set of incoming list items or the command run to an
+`concur` includes the ability to send the output of either the set of incoming list items or the command run to an
 awk intepreter (using goawk).
 
 Note that the order of output is normally the result of parallel excecution and as such is random. This can be overriden.
@@ -98,14 +98,14 @@ be careful not to use path and file oriented tokens on non paths or non files.
 ### Optimizations
 
 If only tokens are used in the command string they will be substituted on but no command will be run. For example,
-`goparallel '{#}'` will have `{}` tokens inserted for each incoming item but that is the extent. It can take very much
+`concur '{#}'` will have `{}` tokens inserted for each incoming item but that is the extent. It can take very much
 longer to run a simple `echo` command on hundreds of thousands of lines (minutes compared to seconds). The substituted
 command line will be used as the input for any awk script run.
 
 ### Examples
 
 ```sh
-$ goparallel 'echo {}' -a '{0..9}'
+$ concur 'echo {}' -a '{0..9}'
 7
 0
 5
@@ -122,7 +122,7 @@ will result in 10 invocations of the `echo` of the incoming list. If there is no
 command the output will just be the input. For example
 
 ```sh
-$ goparallel -a '{0..9}'
+$ concur -a '{0..9}'
 0
 3
 8
@@ -139,7 +139,7 @@ This will show the sequence numbers and items for a list
 
 
 ```sh
-$ goparallel 'echo {#} {}' -a '{0..9}' -o
+$ concur 'echo {#} {}' -a '{0..9}' -o
 1 0
 2 1
 3 2
@@ -157,7 +157,7 @@ Note the use of the `-o` (ordered) flag.
 See below for how to use more than one argument list and numbered tokens to produce output
 
 ```sh
-$ goparallel 'echo {#} {1} {2}' -a '{0..9}' -a '{10..19}' -o
+$ concur 'echo {#} {1} {2}' -a '{0..9}' -a '{10..19}' -o
 1 0 10
 2 1 11
 3 2 12
@@ -176,7 +176,7 @@ $ goparallel 'echo {#} {1} {2}' -a '{0..9}' -a '{10..19}' -o
 a command).
 
 ```sh
-$ goparallel -A '{FS="\\s+"; OFS=","} {print "got "$1}' -a '{1..10}'
+$ concur -A '{FS="\\s+"; OFS=","} {print "got "$1}' -a '{1..10}'
 got 2
 got 8
 got 10
@@ -193,8 +193,8 @@ In this example awk is used as a filter for lines. If the `-P` is used, empty
 lines are printed.
 
 ```sh
-ian@ian-macbookair ~/git/goparallel/cmd/command ‹main●›
-cat test.txt | goparallel -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}'
+ian@ian-macbookair ~/git/concur/cmd/command ‹main●›
+cat test.txt | concur -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}'
 apple,red,4
 strawberry,red,3
 raspberry,red,99
@@ -219,7 +219,7 @@ pineapple  yellow 5
 ```
 
 ```sh
-$ cat test.txt | goparallel 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}' -E
+$ cat test.txt | concur 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}' -E
 
 
 raspberry,red,99
@@ -236,7 +236,7 @@ apple,red,4
 Here is an ordered version of the previous no blank lines and no filtering
 
 ```sh
-$ cat test.txt | goparallel 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}' -o
+$ cat test.txt | concur 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}' -o
 name,color,amount
 apple,red,4
 banana,yellow,6
@@ -254,7 +254,7 @@ I will find out if this is a useful utility. There are some interesting uses, in
 of `tail -f`. awk works with this as well, but goawk does not currently.
 
 ```sh
-$ tail -f /var/log/*log | goparallel -A 'BEGIN {FS="\\s+"; OFS=","} /completed/ {print $0}' -o
+$ tail -f /var/log/*log | concur -A 'BEGIN {FS="\\s+"; OFS=","} /completed/ {print $0}' -o
 /dev/rdisk3s3: fsck_apfs completed at Mon Mar  7 14:16:56 2022
 /dev/rdisk3s3: fsck_apfs completed at Wed Mar 16 22:00:41 2022
 fsck_apfs completed at Wed Mar 16 22:00:41 2022
@@ -263,7 +263,7 @@ fsck_apfs completed at Wed Mar 16 22:00:41 2022
 ```
 
 ```sh
-tail -f /var/log/*log | goparallel -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}'
+tail -f /var/log/*log | concur -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}'
 ==>,/var/log/acroUpdaterTools.log,<==
 Jan,12,,2022
 installer:,Upgrading,at
@@ -288,7 +288,7 @@ Jan,12,,2022
 Here is an example of using both a standard input list and an additional list with awk
 
 ```sh
-$ cat test/test.txt | goparallel 'echo {1} {2}' -o -a 'a b c' -A '{FS="\\s+"; OFS=" "} {print $1, $2, $3, $4}' -o
+$ cat test/test.txt | concur 'echo {1} {2}' -o -a 'a b c' -A '{FS="\\s+"; OFS=" "} {print $1, $2, $3, $4}' -o
 name color amount a
 apple red 4 b
 banana yellow 6 c
@@ -308,7 +308,7 @@ Ping some hosts and waith for full output from each before printing. Notice
 the use of the -k flag which forces each command's output to be grouped.
 
 ```sh
-goparallel 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com' -k
+concur 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com' -k
 PING 127.0.0.1 (127.0.0.1): 56 data bytes
 64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.084 ms
 
@@ -331,11 +331,11 @@ round-trip min/avg/max/stddev = 68.559/68.559/68.559/0.000 ms
 
 ### Escaping command shell commands
 
-The command specified can include calls that will be run by goparallel against an input. However, the command will bee
+The command specified can include calls that will be run by concur against an input. However, the command will bee
 run prior to invocation unless escaped. Examples of characters and sequences that need to be escaped include "`" and "$(".
 
 ```sh
-$ ls -1 /var/log/*log | goparallel "echo count \`wc -l {1}\`"
+$ ls -1 /var/log/*log | concur "echo count \`wc -l {1}\`"
 count 32 /var/log/fsck_apfs_error.log
 count 432 /var/log/acroUpdaterTools.log
 count 524 /var/log/system.log
@@ -347,7 +347,7 @@ count 140367 /var/log/install.log
 ```
 
 ```sh
-$ ls -1 /var/log/*log | goparallel "echo count \$(wc -l {1})"
+$ ls -1 /var/log/*log | concur "echo count \$(wc -l {1})"
 count 32 /var/log/fsck_apfs_error.log
 count 432 /var/log/acroUpdaterTools.log
 count 524 /var/log/system.log
@@ -361,7 +361,7 @@ count 140367 /var/log/install.log
 **Note** that the same result can be obtained without escaping by using single quotes around the command.
 
 ```sh
-$ ls -1 /var/log/*log | goparallel 'echo count $(wc -l {1})'
+$ ls -1 /var/log/*log | concur 'echo count $(wc -l {1})'
 count 0 /var/log/fsck_apfs_error.log
 count 294 /var/log/system.log
 count 432 /var/log/acroUpdaterTools.log
@@ -383,7 +383,7 @@ e.g. -a "{1..4}", -f "/var/log/*log", -a "1 2 3 4"
 Simple sequences are supported
 
 ```sh
-$ goparallel echo "Argument: {}" -a "{1..4}"
+$ concur echo "Argument: {}" -a "{1..4}"
 Argument: 1
 Argument: 4
 Argument: 2
@@ -393,7 +393,7 @@ Argument: 3
 Argument lists can be specified separated by spaces
 
 ```sh
-$ goparallel echo "Argument: {}" -a "1 2 3 4"
+$ concur echo "Argument: {}" -a "1 2 3 4"
 Argument: 1
 Argument: 4
 Argument: 2
@@ -403,7 +403,7 @@ Argument: 3
 Argument lists can include literals and ranges
 
 ```sh
-$ goparallel echo "Argument: {}" -a '1 2 3 4 5 {6..10}'
+$ concur echo "Argument: {}" -a '1 2 3 4 5 {6..10}'
 Argument: 7
 Argument: 2
 Argument: 6
@@ -419,7 +419,7 @@ Argument: 9
 Shell calls can be made to create lists
 
 ```sh
-goparallel echo "Argument: {1} {2}" -a "{0..9}" -a "$(echo {100..199})"
+concur echo "Argument: {1} {2}" -a "{0..9}" -a "$(echo {100..199})"
 Argument: 1 100
 Argument: 4 100
 Argument: 5 100
@@ -433,7 +433,7 @@ Argument: 8 100
 ```
 
 ```sh
-$ goparallel echo "{#} {1} {2}" -f "/var/log/*log" -a "$(echo {1..10..2})"
+$ concur echo "{#} {1} {2}" -f "/var/log/*log" -a "$(echo {1..10..2})"
 2 /var/log/fsck_apfs.log 3
 1 /var/log/acroUpdaterTools.log 1
 4 /var/log/fsck_hfs.log 7
@@ -445,8 +445,8 @@ $ goparallel echo "{#} {1} {2}" -f "/var/log/*log" -a "$(echo {1..10..2})"
 ```
 
 ```sh
-ian@ian-macbookair ~/git/goparallel
-$ seq 15 | goparallel echo "Slot {%} {1} {2}" -f "/var/log/*log" -s 2
+ian@ian-macbookair ~/git/concur
+$ seq 15 | concur echo "Slot {%} {1} {2}" -f "/var/log/*log" -s 2
 Slot 1 2 /var/log/fsck_apfs.log
 Slot 2 1 /var/log/acroUpdaterTools.log
 Slot 1 4 /var/log/fsck_hfs.log
@@ -484,7 +484,7 @@ parallel echo "Argument: {}" ::: 1 2 3 4 5 {6..10}  0.33s user 0.19s system 241%
 ```
 
 ```sh
-$ time goparallel echo "Argument: {}" -a '1 2 3 4 5 {6..10}'
+$ time concur echo "Argument: {}" -a '1 2 3 4 5 {6..10}'
 Argument: 8
 Argument: 1
 Argument: 4
@@ -496,7 +496,7 @@ Argument: 7
 Argument: 9
 Argument: 10
 
-goparallel echo "Argument: {}" -a '1 2 3 4 5 {6..10}'  0.02s user 0.03s system 176% cpu 0.027 total
+concur echo "Argument: {}" -a '1 2 3 4 5 {6..10}'  0.02s user 0.03s system 176% cpu 0.027 total
 ```
 
 ## Trivia

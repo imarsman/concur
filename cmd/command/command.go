@@ -13,9 +13,9 @@ import (
 	"sync/atomic"
 
 	"github.com/alessio/shellescape"
-	"github.com/imarsman/goparallel/cmd/awk"
-	"github.com/imarsman/goparallel/cmd/parse"
-	"github.com/imarsman/goparallel/cmd/tasks"
+	"github.com/imarsman/concur/cmd/awk"
+	"github.com/imarsman/concur/cmd/parse"
+	"github.com/imarsman/concur/cmd/tasks"
 	"golang.org/x/sync/semaphore"
 )
 

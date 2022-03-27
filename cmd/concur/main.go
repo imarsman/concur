@@ -12,10 +12,10 @@ import (
 	"sync"
 
 	"github.com/alexflint/go-arg"
-	"github.com/imarsman/goparallel/cmd/awk"
-	"github.com/imarsman/goparallel/cmd/command"
-	"github.com/imarsman/goparallel/cmd/parse"
-	"github.com/imarsman/goparallel/cmd/tasks"
+	"github.com/imarsman/concur/cmd/awk"
+	"github.com/imarsman/concur/cmd/command"
+	"github.com/imarsman/concur/cmd/parse"
+	"github.com/imarsman/concur/cmd/tasks"
 )
 
 var slots int

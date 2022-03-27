@@ -1,4 +1,4 @@
-module github.com/imarsman/goparallel
+module github.com/imarsman/concur
 
 go 1.17
 
