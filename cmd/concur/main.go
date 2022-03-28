@@ -23,6 +23,8 @@ var (
 	GitCommit string
 	// CompilationDate build flag
 	CompilationDate string
+	// CommitDate the date of latest commit
+	CommitDate string
 )
 
 var slots int
@@ -67,14 +69,18 @@ type Args struct {
 func (Args) Version() string {
 	var buf = new(bytes.Buffer)
 
-	buf.WriteString(fmt.Sprintln("concur"))
-	buf.WriteString(fmt.Sprintln(strings.Repeat("-", len("concur"))))
+	msg := "concur"
+	buf.WriteString(fmt.Sprintln(msg))
+	buf.WriteString(fmt.Sprintln(strings.Repeat("-", len(msg))))
 
 	if GitCommit != "" {
-		buf.WriteString(fmt.Sprintf("Commit: %s\n", GitCommit))
+		buf.WriteString(fmt.Sprintf("Commit: %13s\n", GitCommit))
+	}
+	if CommitDate != "" {
+		buf.WriteString(fmt.Sprintf("Commit date: %26s\n", CommitDate))
 	}
 	if CompilationDate != "" {
-		buf.WriteString(fmt.Sprintf("Compile Date: %s\n", CompilationDate))
+		buf.WriteString(fmt.Sprintf("Compile Date: %12s\n", CompilationDate))
 	}
 
 	return buf.String()

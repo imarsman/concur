@@ -7,13 +7,17 @@ vars:
   buildname: concur
   dir: >
     {{.DIR}}
-  LDFLAGS: -X main.GitCommit=$GIT_COMMIT -X main.CompilationDate=$COMPILATION_DATE
-
+  LDFLAGS: >
+    -X 'main.GitCommit=$GIT_COMMIT'
+    -X 'main.CompilationDate=$COMPILATION_DATE'
+    -X 'main.CommitDate=$COMMIT_DATE'
 env:
   GIT_COMMIT:
     sh: git rev-parse --short HEAD
   COMPILATION_DATE:
-    sh: date "+%F"
+    sh: date "+%Y-%m-%d %H:%M:%S %z"
+  COMMIT_DATE:
+    sh: git log -1 --format="%ci"
 
 tasks:
   default:
