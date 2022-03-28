@@ -7,6 +7,13 @@ vars:
   buildname: concur
   dir: >
     {{.DIR}}
+  LDFLAGS: -X main.GitCommit=$GIT_COMMIT -X main.CompilationDate=$COMPILATION_DATE
+
+env:
+  GIT_COMMIT:
+    sh: git rev-parse --short HEAD
+  COMPILATION_DATE:
+    sh: date "+%F"
 
 tasks:
   default:
@@ -30,7 +37,7 @@ tasks:
     cmds:
       - cmd: rm -f ../../build/{{.buildname}}
         ignore_error: true
-      - go build -o ../../build/{{.buildname}} .
+      - go build -ldflags="{{.LDFLAGS}}" -o ../../build/{{.buildname}} .
   test-image:
     desc: a test of calling concur to copy an image then remove it
     dir: test/image
