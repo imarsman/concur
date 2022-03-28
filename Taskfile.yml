@@ -35,6 +35,8 @@ tasks:
         ignore_error: true
       - cmd: cp ./build/{{.buildname}} {{.targetbin}}
         ignore_error: true
+      - cmd: rm -f ./build/{{.buildname}}
+        ignore_error: true
   build:
     desc: build app
     dir: cmd/{{.buildname}}
