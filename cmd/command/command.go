@@ -313,7 +313,8 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 		}
 	}
 
-	if len(tasks) > 1 {
+	// Remove this after ensuring it is OK
+	if len(tasks) >= 1 {
 		var found bool
 		var number int
 
@@ -686,14 +687,14 @@ func (c *Command) Execute() (err error) {
 	return
 }
 
-var mu sync.Mutex
+var printWG = new(sync.WaitGroup)
 
 // Print send to output
 func (c *Command) Print(file *os.File, str string) {
-	if !c.Config.KeepOrder {
-		mu.Lock()
-		defer mu.Unlock()
+	printWG.Wait()
+	if c.Config.KeepOrder {
+		printWG.Add(1)
+		defer printWG.Done()
 	}
-
 	fmt.Fprintln(file, strings.TrimSpace(str))
 }
