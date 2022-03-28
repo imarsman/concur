@@ -1,8 +1,11 @@
 # concur
 
-A parallel workalike in `golang`, though it is not really a parallel workalike. It is more like a line processing tool with
-the option of shell execution and the application of an `awk` script. One benefit is the ability to run commands against
-input in parallel, similar to the `parallel` and `xargs` utilities.
+A parallel workalike in `golang`, though it is not really a parallel workalike. It is more like a text line processing
+tool with the option of shell execution and the application of an `awk` script. One benefit is the ability to run
+commands against input in parallel, similar to the `parallel` and `xargs` utilities. Things like concurrency and the
+number of concurrent slots can be modified as well as omitting or keeping empty output lines. Null end of line
+terminator is supported and things like whether to allow output from parallel commands to be written as it comes in or
+saved per command run.
 
 `parallel` excels at producing lists of text values that can be used to do many amazing things when they are integrated
 into shell commands. The implementation of `concur` is more deterministic, with one predictable set of inputs for
@@ -104,6 +107,22 @@ command line will be used as the input for any awk script run.
 
 ### Examples
 
+Run a simple random fibonacci series several times
+```sh
+$ time concur './fibonacci.sh' -a '{1..10}'
+13
+2584
+8
+5
+610
+987
+233
+3
+1
+144
+```
+
+Echo a series of numbers
 ```sh
 $ concur 'echo {}' -a '{0..9}'
 7
@@ -118,8 +137,7 @@ $ concur 'echo {}' -a '{0..9}'
 8
 ```
 
-will result in 10 invocations of the `echo` of the incoming list. If there is no
-command the output will just be the input. For example
+If there is no command the output will just be the input. For example
 
 ```sh
 $ concur -a '{0..9}'
@@ -176,7 +194,7 @@ $ concur 'echo {#} {1} {2}' -a '{0..9}' -a '{10..19}' -o
 a command).
 
 ```sh
-$ concur -A '{FS="\\s+"; OFS=","} {print "got "$1}' -a '{1..10}'
+$ concur -A 'BEGIN {FS="\\s+"; OFS=","} {print "got "$1}' -a '{1..10}'
 got 2
 got 8
 got 10
@@ -194,7 +212,7 @@ lines are printed.
 
 ```sh
 ian@ian-macbookair ~/git/concur/cmd/command ‹main●›
-cat test.txt | concur -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}'
+cat fruits.txt | concur -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}'
 apple,red,4
 strawberry,red,3
 raspberry,red,99
@@ -202,7 +220,7 @@ raspberry,red,99
 
 Note that empty lines are by default skipped. That can be overriden with a flag
 
-Here is the `test.text` file
+Here is the `fruits.text` file
 
 ```
 name       color  amount
@@ -219,7 +237,7 @@ pineapple  yellow 5
 ```
 
 ```sh
-$ cat test.txt | concur 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}' -E
+$ cat fruits.txt | concur 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}' -E
 
 
 raspberry,red,99
@@ -236,7 +254,7 @@ apple,red,4
 Here is an ordered version of the previous no blank lines and no filtering
 
 ```sh
-$ cat test.txt | concur 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}' -o
+$ cat fruits.txt | concur 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}' -o
 name,color,amount
 apple,red,4
 banana,yellow,6
@@ -250,8 +268,7 @@ potato,brown,9
 pineapple,yellow,5
 ```
 
-I will find out if this is a useful utility. There are some interesting uses, including the ability to accept the otuput
-of `tail -f`. awk works with this as well, but goawk does not currently.
+concur accepts the output of `tail -f`. `awk` does as well but `goawk` does not.
 
 ```sh
 $ tail -f /var/log/*log | concur -A 'BEGIN {FS="\\s+"; OFS=","} /completed/ {print $0}' -o
@@ -302,8 +319,6 @@ potato brown 9 a
 pineapple yellow 5 b
 ```
 
-I will very likely find errors and bugs.
-
 Ping some hosts and waith for full output from each before printing. Notice
 the use of the -k flag which forces each command's output to be grouped.
 
@@ -331,8 +346,8 @@ round-trip min/avg/max/stddev = 68.559/68.559/68.559/0.000 ms
 
 ### Escaping command shell commands
 
-The command specified can include calls that will be run by concur against an input. However, the command will bee
-run prior to invocation unless escaped. Examples of characters and sequences that need to be escaped include "`" and "$(".
+The command specified can include calls that will be run by concur against an input. However, the command will be
+run prior to invocation unless escaped. Examples of characters and sequences that need to be escaped include `` ` `` and `$(`.
 
 ```sh
 $ ls -1 /var/log/*log | concur "echo count \`wc -l {1}\`"
@@ -378,7 +393,9 @@ Lists in arguments **need to be quoted**. Lists are split up separately.
 
 The command to be run does not need to be quoted unless there are characters like { and `.
 
-e.g. -a "{1..4}", -f "/var/log/*log", -a "1 2 3 4"
+e.g. `-a "{1..4}"` `-a "1 2 3 4"`
+
+Currently filenames will not result in special handling as files or a source of lines.
 
 Simple sequences are supported
 
@@ -484,7 +501,7 @@ parallel echo "Argument: {}" ::: 1 2 3 4 5 {6..10}  0.33s user 0.19s system 241%
 ```
 
 ```sh
-$ time concur echo "Argument: {}" -a '1 2 3 4 5 {6..10}'
+$ time concur 'echo Argument: {}' -a '1 2 3 4 5 {6..10}'
 Argument: 8
 Argument: 1
 Argument: 4
@@ -496,7 +513,7 @@ Argument: 7
 Argument: 9
 Argument: 10
 
-concur echo "Argument: {}" -a '1 2 3 4 5 {6..10}'  0.02s user 0.03s system 176% cpu 0.027 total
+concur 'echo Argument: {}' -a '1 2 3 4 5 {6..10}'  0.02s user 0.04s system 218% cpu 0.025 total
 ```
 
 ## Trivia
@@ -506,16 +523,17 @@ towards having a package contain about 400 lines of code with more allowed if th
 implementing handler functions. 1,000 lines of code to define data types and variables and functions to use all of that
 is not as readable.
 
-```sh
-$ gocloc . --not-match-d vendor
+```
+$ gocloc . cmd --not-match-d vendor --exclude-ext=xml
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-Go                               9            222            202           1024
-Markdown                         1             81              0            381
-YAML                             1              3              1             29
-Plain Text                       2              0              0             23
+Go                               9            229            221           1100
+Markdown                         1             92              0            444
+Plain Text                       4              0              0            285
+YAML                             1              3              3             51
+BASH                             1              3              1             10
 -------------------------------------------------------------------------------
-TOTAL                           13            306            203           1457
+TOTAL                           16            327            225           1890
 -------------------------------------------------------------------------------
 ```
