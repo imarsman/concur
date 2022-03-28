@@ -16,9 +16,9 @@ integrated into shell commands. `concur` is not as focussed on producing varied 
 commands. All lists in `concur` are cycled through with the longest list defining how many operations to perform. If
 there is a shorter list and its members are fully used the list will cycle back to the starting point.
 
-List of input using the `-a` flag (which can be used repeatedly to result in separate input lists) can be arbitrary
+List of input using the `-a` flag (which can be used repeatedly to result in separate input lists) are arbitrary
 literal lists or expansions of file globbing pattters. For example `-a '/var/log/*log'` will result in a list of paths.
-One can also supply lists using shell calls such as 
+One can also supply lists using shell calls. See below for examples..
 
 ## Usage
 
@@ -42,14 +42,32 @@ Options:
   --keep-order, -k       don't keep output for calls separate
   --print-empty, -P      print empty lines
   --exit-on-empty, -E    exit on first error
-  --print0, -0           split at null character
+  --null, -0             split at null character
   --help, -h             display this help and exit
+  --version              display version and exit
 ```
 
 Split at null is apparently useful if sending in filenames that contain newlines. The null character can then be used on
 the recieving side to split by the null character and get the newlines. This is an edge case but was fun to add.
 
 ## Examples
+
+Split at null
+
+```sh
+$ find /var/log -type f -name "*log" -print0 | concur -0
+/var/log/fsck_apfs_error.log
+/var/log/com.apple.xpc.launchd/launchd.log
+/var/log/system.log
+/var/log/fsck_apfs.log
+/var/log/wifi.log
+/var/log/acroUpdaterTools.log
+/var/log/shutdown_monitor.log
+/var/log/fsck_hfs.log
+/var/log/install.log
+```
+
+The first time someone told me how to use find they specified `-print0` so I am a bit nostalgic.
 
 ```sh
 $ concur -a "$(seq 5)"
