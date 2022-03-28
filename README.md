@@ -90,7 +90,7 @@ $ concur -a '{1..5}'
 ```
 
 `concur` includes the ability to send the output of either the set of incoming list items or the command run to an
-awk intepreter (using goawk).
+awk intepreter (using goawk library).
 
 Note that the order of output is normally the result of parallel excecution and as such is random. This can be overriden.
 
