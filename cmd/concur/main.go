@@ -18,6 +18,13 @@ import (
 	"github.com/imarsman/concur/cmd/tasks"
 )
 
+var (
+	// GitCommit build flag
+	GitCommit string
+	// CompilationDate build flag
+	CompilationDate string
+)
+
 var slots int
 
 func init() {
@@ -41,8 +48,8 @@ func readLines(path string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-// callArgs command line arguments
-var callArgs struct {
+// Args command line arguments
+type Args struct {
 	Command     string   `arg:"positional"`
 	Arguments   []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
 	Awk         string   `arg:"-A,--awk" help:"process using awk script or a script filename."`
@@ -56,7 +63,26 @@ var callArgs struct {
 	SplitAtNull bool     `arg:"-0,--null" help:"split at null character"`
 }
 
+// Version get version information
+func (Args) Version() string {
+	var buf = new(bytes.Buffer)
+
+	buf.WriteString(fmt.Sprintln("concur"))
+	buf.WriteString(fmt.Sprintln(strings.Repeat("-", len("concur"))))
+
+	if GitCommit != "" {
+		buf.WriteString(fmt.Sprintf("Commit: %s\n", GitCommit))
+	}
+	if CompilationDate != "" {
+		buf.WriteString(fmt.Sprintf("Compile Date: %s\n", CompilationDate))
+	}
+
+	return buf.String()
+}
+
 func main() {
+	var callArgs = Args{}
+
 	arg.MustParse(&callArgs)
 
 	var awkCommand *awk.Command
