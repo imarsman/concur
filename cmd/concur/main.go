@@ -61,8 +61,10 @@ type Args struct {
 	Ordered     bool     `arg:"-o,--ordered" help:"run tasks in their incoming order"`
 	KeepOrder   bool     `arg:"-k,--keep-order" help:"don't keep output for calls separate"`
 	PrintEmpty  bool     `arg:"-P,--print-empty" help:"print empty lines"`
-	ExitOnError bool     `arg:"-E,--exit-on-empty" help:"exit on first error"`
+	ExitOnError bool     `arg:"-E,--exit-on-error" help:"exit on first error"`
 	SplitAtNull bool     `arg:"-0,--null" help:"split at null character"`
+	IgnoreError bool     `arg:"-i,--ignore-error" help:"Ignore errors"`
+	StdIn       bool     `arg:"-I,--stdin" help:"send input to stdin"`
 }
 
 // Version get version information
@@ -127,6 +129,7 @@ func main() {
 		Awk:         awkCommand,
 		PrintEmpty:  callArgs.PrintEmpty,
 		ExitOnError: callArgs.ExitOnError,
+		StdIn:       callArgs.StdIn,
 	}
 
 	taskListSet := tasks.NewTaskListSet()

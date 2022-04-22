@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,6 +45,7 @@ type Config struct {
 	Concurrency int64
 	PrintEmpty  bool
 	ExitOnError bool
+	StdIn       bool
 }
 
 func init() {
@@ -51,6 +53,7 @@ func init() {
 
 // Command a command
 type Command struct {
+	Input    string
 	Command  string
 	Slots    int64
 	Config   Config
@@ -149,6 +152,12 @@ func getParams(regEx *regexp.Regexp, input string) (paramsMap map[string]string)
 
 // Prepare replace placeholders with data from incoming
 func (c *Command) Prepare(tasks []tasks.Task) (err error) {
+	var taskStrings []string
+	for _, t := range tasks {
+		taskStrings = append(taskStrings, t.Task)
+	}
+	c.Input = strings.Join(taskStrings, " ")
+
 	defer c.GetSlotNumber()
 	c.Empty = false
 
@@ -185,7 +194,7 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 
 	// If no tokens, supply them
 	// With an empty command the result will be the placement of the incoming value
-	if !foundToken {
+	if !foundToken && !c.Config.StdIn {
 		var sb strings.Builder
 		if len(tasks) == 1 {
 			_, err = sb.WriteString("{}")
@@ -627,6 +636,20 @@ func (c *Command) Execute() (err error) {
 		var buffStdErr bytes.Buffer
 
 		cmd := exec.Command("bash", "-c", c.Command)
+
+		if c.Config.StdIn {
+			// https://stackoverflow.com/questions/23166468/how-can-i-get-stdin-to-exec-cmd-in-golang
+			stdin, stdinErr := cmd.StdinPipe()
+			if stdinErr != nil {
+				err = stdinErr
+				return
+			}
+
+			go func() {
+				defer stdin.Close()
+				io.WriteString(stdin, c.Input)
+			}()
+		}
 
 		cmd.Stdout = &buffStdOut
 		cmd.Stderr = &buffStdErr
