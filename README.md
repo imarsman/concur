@@ -24,8 +24,15 @@ One can also supply lists using shell calls. See below for examples..
 
 ```
 $ concur -h
-Usage: concur [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] [--shuffle] 
-                  [--ordered] [--keep-order] [--print-empty] [--exit-on-empty] [COMMAND]
+concur
+------
+Commit:       3f6d8bb
+Commit date:  2022-03-28 18:47:09 -0400
+Compile Date: 2022-04-22 17:13:12 -0400
+
+Usage: concur [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] 
+[--shuffle] [--ordered] [--keep-order] [--print-empty] [--exit-on-error] [--null] 
+[--ignore-error] [--stdin] [COMMAND]
 
 Positional arguments:
   COMMAND
@@ -41,8 +48,10 @@ Options:
   --ordered, -o          run tasks in their incoming order
   --keep-order, -k       don't keep output for calls separate
   --print-empty, -P      print empty lines
-  --exit-on-empty, -E    exit on first error
+  --exit-on-error, -E    exit on first error
   --null, -0             split at null character
+  --ignore-error, -i     Ignore errors
+  --stdin, -I            send input to stdin
   --help, -h             display this help and exit
   --version              display version and exit
 ```
@@ -51,6 +60,24 @@ Split at null is apparently useful if sending in filenames that contain newlines
 the recieving side to split by the null character and get the newlines. This is an edge case but was fun to add.
 
 ## Examples
+
+Send input to stdin for command to be run
+
+```sh
+$ find . -type f -name "*.yml" | concur 'yamllint -' -I
+stdin
+  1:1       warning  missing document start "---"  (document-start)
+  1:56      error    no new line character at the end of file  (new-line-at-end-of-file)
+stdin
+  1:1       warning  missing document start "---"  (document-start)
+  1:43      error    no new line character at the end of file  (new-line-at-end-of-file)
+stdin
+  1:1       warning  missing document start "---"  (document-start)
+  1:15      error    no new line character at the end of file  (new-line-at-end-of-file)
+stdin
+  1:1       warning  missing document start "---"  (document-start)
+  1:54      error    no new line character at the end of file  (new-line-at-end-of-file)
+```
 
 Split at null
 
