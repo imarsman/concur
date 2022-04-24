@@ -124,7 +124,7 @@ $ concur -a '{1..5}'
 ```
 
 `concur` includes the ability to send the output of either the set of incoming list items or the command run to an
-awk intepreter (using goawk library).
+awk intepreter (using `goawk` library).
 
 Note that the order of output is normally the result of parallel excecution and as such is random. This can be overriden.
 
@@ -376,7 +376,7 @@ Ping some hosts and waith for full output from each before printing. Notice
 the use of the -k flag which forces each command's output to be grouped.
 
 ```sh
-concur -c 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com' -k
+concur -c 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com' -keep-order
 PING 127.0.0.1 (127.0.0.1): 56 data bytes
 64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.084 ms
 
@@ -504,22 +504,14 @@ Argument: 8 100
 
 ```sh
 $ concur -c 'echo "{1} {2}"' -a "/var/log/*log" -a "$(echo {1..10..2})"
-/var/log/acroUpdaterTools.log
-/var/log/fsck_apfs.log
-/var/log/fsck_apfs_error.log
-/var/log/fsck_hfs.log
-/var/log/install.log
-/var/log/shutdown_monitor.log
-/var/log/system.log
-/var/log/wifi.log
-/var/log/acroUpdaterTools.log 1
 /var/log/wifi.log 5
-/var/log/system.log 3
-/var/log/fsck_apfs_error.log 5
-/var/log/fsck_apfs.log 3
-/var/log/shutdown_monitor.log 1
-/var/log/install.log 9
 /var/log/fsck_hfs.log 7
+/var/log/shutdown_monitor.log 1
+/var/log/fsck_apfs.log 3
+/var/log/system.log 3
+/var/log/acroUpdaterTools.log 1
+/var/log/install.log 9
+/var/log/fsck_apfs_error.log 5
 ```
 
 ```sh
@@ -578,16 +570,14 @@ implementing handler functions. 1,000 lines of code to define data types and var
 is not as readable.
 
 ```
-$ gocloc . cmd --not-match-d vendor --exclude-ext=xml
+$ gocloc Taskfile.yml README.md cmd
 -------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-Go                               9            229            221           1100
-Markdown                         1             92              0            444
-Plain Text                       4              0              0            285
-YAML                             1              3              3             51
-BASH                             1              3              1             10
+Go                               9            234            227           1149
+Markdown                         1             99              0            486
+YAML                             1              3              3             53
 -------------------------------------------------------------------------------
-TOTAL                           16            327            225           1890
+TOTAL                           11            336            230           1688
 -------------------------------------------------------------------------------
 ```
