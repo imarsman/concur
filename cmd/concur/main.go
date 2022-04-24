@@ -188,6 +188,7 @@ func main() {
 						}
 						taskList.Add(items...)
 					} else {
+						baseDir := filepath.Dir(part)
 						matches, err := filepath.Glob(part)
 						if err != nil {
 							continue
@@ -199,7 +200,7 @@ func main() {
 							for _, f := range matches {
 								f, _ := os.Stat(f)
 								if !f.IsDir() {
-									files = append(files, f.Name())
+									files = append(files, filepath.Join(baseDir, f.Name()))
 								}
 							}
 							taskList.Add(files...)
