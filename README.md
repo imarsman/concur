@@ -23,7 +23,8 @@ One can also supply lists using shell calls. See below for examples..
 ## Auto completion
 
 `concur` uses the `posener/complete` library. To use it type `COMP_INSTALL=1 concur` to be prompted to add auto
-completion for `concur`. After setup you can restart your terminal session then press tab to get auto completion.
+completion for `concur` to the end of your `.zshrc` file. After setup you can restart your terminal session then press
+tab to get auto completion.
 
 ## Usage
 
