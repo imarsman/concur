@@ -20,6 +20,11 @@ List of input using the `-a` flag (which can be used repeatedly to result in sep
 literal lists or expansions of file globbing pattters. For example `-a '/var/log/*log'` will result in a list of paths.
 One can also supply lists using shell calls. See below for examples..
 
+## Auto completion
+
+`concur` uses the `posener/complete` library. To use it type `COMP_INSTALL=1 concur` to be prompted to add auto
+completion for `concur`. After setup you can restart your terminal session then press tab to get auto completion.
+
 ## Usage
 
 ```
