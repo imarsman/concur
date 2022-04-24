@@ -117,6 +117,10 @@ func main() {
 
 	arg.MustParse(&callArgs)
 
+	if callArgs.Ordered {
+		callArgs.Slots = 1
+	}
+
 	var awkCommand *awk.Command
 	if callArgs.Awk != "" {
 		awkScript := callArgs.Awk
@@ -147,7 +151,6 @@ func main() {
 	config := command.Config{
 		Slots:       callArgs.Slots,
 		DryRun:      callArgs.DryRun,
-		Ordered:     callArgs.Ordered,
 		KeepOrder:   callArgs.KeepOrder,
 		Concurrency: callArgs.Slots,
 		Awk:         awkCommand,
