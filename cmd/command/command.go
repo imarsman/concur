@@ -64,7 +64,7 @@ type Command struct {
 // NewCommand create a new command struct instance
 func NewCommand(value string, taskListSet *tasks.TaskListSet, config Config) Command {
 	c := Command{
-		Command:  value,
+		Command:  strings.TrimSpace(value),
 		Slots:    config.Slots,
 		Config:   config,
 		Sequence: 1,
@@ -172,7 +172,7 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 	var commandStringEmpty = true
 
 	// If empty, flag that
-	if strings.TrimSpace(c.Command) == "" {
+	if c.Command == "" {
 		c.Empty = true
 	} else {
 		// allow no command to be run but line reformatted if the only space delimite things in the line are {} type
@@ -210,12 +210,18 @@ func (c *Command) Prepare(tasks []tasks.Task) (err error) {
 			}
 		}
 
+		tokenStr := strings.TrimSpace(sb.String())
 		// If the incoming command started with no non token code
 		if commandStringEmpty {
 			if c.Command == "" {
-				c.Command = fmt.Sprintf("%s", strings.TrimSpace(sb.String()))
+				c.Command = fmt.Sprintf("%s", tokenStr)
 			} else {
-				c.Command = fmt.Sprintf("%s %s", c.Command, strings.TrimSpace(sb.String()))
+				c.Command = fmt.Sprintf("%s %s", c.Command, tokenStr)
+			}
+		} else {
+			// Put in our placeholders
+			if c.Command != "" {
+				c.Command = fmt.Sprintf("%s %s", c.Command, tokenStr)
 			}
 		}
 	}
