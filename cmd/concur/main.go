@@ -117,7 +117,12 @@ func main() {
 
 	arg.MustParse(&callArgs)
 
+	// Slots are handled by a semaphore. If slots are set to 1 ordered processing is forced.
 	if callArgs.Ordered {
+		callArgs.Slots = 1
+	}
+	// Avoid locking things up
+	if callArgs.Slots == 0 {
 		callArgs.Slots = 1
 	}
 

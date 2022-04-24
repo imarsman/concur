@@ -617,7 +617,7 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 		}
 	}
 
-	// Run in order (slower) or in parallel
+	// Run as go process. Will run ordered if semaphore count set to 1
 	go run()
 
 	return
