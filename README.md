@@ -64,23 +64,25 @@ the recieving side to split by the null character and get the newlines. This is 
 
 ## Examples
 
-Send input to stdin for command to be run. Note that yamllint prints to stderr when it finds something to warn about.
-This is fine when running in parallel but fails with `-ordered` execution. I am looking at a way to deal with this.
+If `-ordered` is selected the effect will be to make `-slots` equal to 1, meaning that the runs will be in order.
 
 ```sh
-$ find . -type f -name "*.yml" | concur -c 'yamllint -' -I
-stdin
-  1:1       warning  missing document start "---"  (document-start)
-  1:56      error    no new line character at the end of file  (new-line-at-end-of-file)
-stdin
-  1:1       warning  missing document start "---"  (document-start)
-  1:43      error    no new line character at the end of file  (new-line-at-end-of-file)
+$ find . -type f -name "*.yml" | concur -c 'yamllint -' -ordered -I
 stdin
   1:1       warning  missing document start "---"  (document-start)
   1:15      error    no new line character at the end of file  (new-line-at-end-of-file)
 stdin
   1:1       warning  missing document start "---"  (document-start)
+  1:43      error    no new line character at the end of file  (new-line-at-end-of-file)
+stdin
+  1:1       warning  missing document start "---"  (document-start)
   1:54      error    no new line character at the end of file  (new-line-at-end-of-file)
+stdin
+  1:1       warning  missing document start "---"  (document-start)
+  1:56      error    no new line character at the end of file  (new-line-at-end-of-file)
+stdin
+  1:1       warning  missing document start "---"  (document-start)
+  1:52      error    no new line character at the end of file  (new-line-at-end-of-file)
 ```
 
 Split at null
@@ -219,7 +221,8 @@ $ concur -c 'echo {#} {}' -a '{0..9}' -o
 10 9
 ```
 
-Note the use of the `-o` (ordered) flag.
+Note the use of the `-o` (ordered) flag. In code `-ordered` forces a single semaphore for running the command against
+input, resulting in only one command being run at a time.
 
 See below for how to use more than one argument list and numbered tokens to produce output
 
