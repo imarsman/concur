@@ -40,7 +40,6 @@ type Config struct {
 	Awk         *awk.Command // awk script to use
 	Slots       int64
 	DryRun      bool
-	Ordered     bool
 	KeepOrder   bool
 	Concurrency int64
 	PrintEmpty  bool
@@ -619,11 +618,7 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 	}
 
 	// Run in order (slower) or in parallel
-	if c.Config.Ordered {
-		run()
-	} else {
-		go run()
-	}
+	go run()
 
 	return
 }
