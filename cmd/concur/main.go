@@ -16,6 +16,8 @@ import (
 	"github.com/imarsman/concur/cmd/command"
 	"github.com/imarsman/concur/cmd/parse"
 	"github.com/imarsman/concur/cmd/tasks"
+	"github.com/posener/complete/v2"
+	"github.com/posener/complete/v2/predict"
 )
 
 var (
@@ -52,7 +54,7 @@ func readLines(path string) ([]string, error) {
 
 // Args command line arguments
 type Args struct {
-	Command     string   `arg:"positional"`
+	Command     string   `arg:"-c,--command"`
 	Arguments   []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
 	Awk         string   `arg:"-A,--awk" help:"process using awk script or a script filename."`
 	DryRun      bool     `arg:"-d,--dry-run" help:"show command to run but don't run"`
@@ -89,6 +91,28 @@ func (Args) Version() string {
 }
 
 func main() {
+	// Create the complete command.
+	// Here we define completion values for each flag.
+	cmd := &complete.Command{
+		Flags: map[string]complete.Predictor{
+			"command":       predict.Nothing,
+			"arguments":     predict.Nothing,
+			"awk":           predict.Nothing,
+			"dry-run":       predict.Nothing,
+			"slots":         predict.Nothing,
+			"shuffle":       predict.Nothing,
+			"ordered":       predict.Nothing,
+			"keep-order":    predict.Nothing,
+			"print-empty":   predict.Nothing,
+			"exit-on-error": predict.Nothing,
+			"null":          predict.Nothing,
+			"ignore-error":  predict.Nothing,
+			"stdin":         predict.Nothing,
+		},
+	}
+
+	cmd.Complete("concur")
+
 	var callArgs = Args{}
 
 	arg.MustParse(&callArgs)
