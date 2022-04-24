@@ -603,11 +603,13 @@ func RunCommand(c Command, taskSet []tasks.Task, wg *sync.WaitGroup) (err error)
 		return
 	}
 
+	// Acquire weight of one from semaphore
 	err = sem.Acquire(ctx, 1)
 	if err != nil {
 		panic(err)
 	}
 
+	// Run and release waitgroup for overall processing and semaphore for concurrency
 	var run = func() {
 		defer wg.Done()
 		defer sem.Release(1)
@@ -638,6 +640,7 @@ func (c *Command) Execute() (err error) {
 
 		cmd := exec.Command("bash", "-c", c.Command)
 
+		// If stdin was specified, send the input to the command's stdin
 		if c.Config.StdIn {
 			// https://stackoverflow.com/questions/23166468/how-can-i-get-stdin-to-exec-cmd-in-golang
 			stdin, stdinErr := cmd.StdinPipe()
@@ -715,6 +718,7 @@ var printWG = new(sync.WaitGroup)
 
 // Print send to output
 func (c *Command) Print(file *os.File, str string) {
+	// Optional waitgroup for printing output in order
 	printWG.Wait()
 	if c.Config.KeepOrder {
 		printWG.Add(1)
