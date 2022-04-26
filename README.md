@@ -32,16 +32,16 @@ tab to get auto completion.
 $ concur -h
 concur
 ------
-Commit:       d767b89
-Commit date:  2022-04-22 17:20:33 -0400
-Compile Date: 2022-04-24 12:49:50 -0400
+Commit:       23cffc6
+Commit date:  2022-04-24 14:27:48 -0400
+Compile Date: 2022-04-25 21:05:57 -0400
 
-Usage: concur [--command COMMAND] [--arguments ARGUMENTS] [--awk AWK] [--dry-run] 
-[--slots SLOTS] [--shuffle] [--ordered] [--keep-order] [--print-empty] [--exit-on-error] 
-[--null] [--ignore-error] [--stdin]
+Usage: concur [--arguments ARGUMENTS] [--awk AWK] [--dry-run] [--slots SLOTS] [--shuffle] [--ordered] [--keep-order] [--print-empty] [--exit-on-error] [--null] [--ignore-error] [--stdin] [COMMAND]
+
+Positional arguments:
+  COMMAND
 
 Options:
-  --command COMMAND, -c COMMAND
   --arguments ARGUMENTS, -a ARGUMENTS
                          lists of arguments
   --awk AWK, -A AWK      process using awk script or a script filename.
@@ -56,9 +56,7 @@ Options:
   --null, -0             split at null character
   --ignore-error, -i     Ignore errors
   --stdin, -I            send input to stdin
-  --help, -h             display this help and exit
-  --version              display version and exit
-```
+  --help, -h             display this help and exit```
 
 Split at null is apparently useful if sending in filenames that contain newlines. The null character can then be used on
 the recieving side to split by the null character and get the newlines. This is an edge case but was fun to add.
@@ -68,7 +66,7 @@ the recieving side to split by the null character and get the newlines. This is 
 If `-ordered` is selected the effect will be to make `-slots` equal to 1, meaning that the runs will be in order.
 
 ```sh
-$ find . -type f -name "*.yml" | concur -c 'yamllint -' -ordered -I
+$ find . -type f -name "*.yml" | concur 'yamllint -' -ordered -I
 stdin
   1:1       warning  missing document start "---"  (document-start)
   1:15      error    no new line character at the end of file  (new-line-at-end-of-file)
@@ -161,7 +159,7 @@ command line will be used as the input for any awk script run.
 
 Run a simple random fibonacci series several times
 ```sh
-$ time concur -c './fibonacci.sh' -a '{1..10}'
+$ time concur './fibonacci.sh' -a '{1..10}'
 13
 2584
 8
@@ -176,7 +174,7 @@ $ time concur -c './fibonacci.sh' -a '{1..10}'
 
 Echo a series of numbers
 ```sh
-$ concur -c 'echo {}' -a '{0..9}'
+$ concur 'echo {}' -a '{0..9}'
 7
 0
 5
@@ -209,7 +207,7 @@ This will show the sequence numbers and items for a list
 
 
 ```sh
-$ concur -c 'echo {#} {}' -a '{0..9}' -o
+$ concur 'echo {#} {}' -a '{0..9}' -o
 1 0
 2 1
 3 2
@@ -228,7 +226,7 @@ input, resulting in only one command being run at a time.
 See below for how to use more than one argument list and numbered tokens to produce output
 
 ```sh
-$ concur -c 'echo {#} {1} {2}' -a '{0..9}' -a '{10..19}' -o
+$ concur 'echo {#} {1} {2}' -a '{0..9}' -a '{10..19}' -o
 1 0 10
 2 1 11
 3 2 12
@@ -290,7 +288,7 @@ pineapple  yellow 5
 ```
 
 ```sh
-$ cat fruits.txt | concur -c 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}' -E
+$ cat fruits.txt | concur 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} /red/ {print $1,$2,$3}' -E
 
 
 raspberry,red,99
@@ -307,7 +305,7 @@ apple,red,4
 Here is an ordered version of the previous no blank lines and no filtering
 
 ```sh
-$ cat fruits.txt | concur -c 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}' -o
+$ cat fruits.txt | concur 'echo' -A 'BEGIN {FS="\\s+"; OFS=","} {print $1,$2,$3}' -o
 name,color,amount
 apple,red,4
 banana,yellow,6
@@ -358,7 +356,7 @@ Jan,12,,2022
 Here is an example of using both a standard input list and an additional list with awk
 
 ```sh
-$ cat test/test.txt | concur -c 'echo {1} {2}' -o -a 'a b c' -A '{FS="\\s+"; OFS=" "} {print $1, $2, $3, $4}' -o
+$ cat test/test.txt | concur 'echo {1} {2}' -o -a 'a b c' -A '{FS="\\s+"; OFS=" "} {print $1, $2, $3, $4}' -o
 name color amount a
 apple red 4 b
 banana yellow 6 c
@@ -376,7 +374,7 @@ Ping some hosts and waith for full output from each before printing. Notice
 the use of the -k flag which forces each command's output to be grouped.
 
 ```sh
-concur -c 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com' -keep-order
+concur 'ping -c 1 "{}"' -a '127.0.0.1 ibm.com cisco.com' -keep-order
 PING 127.0.0.1 (127.0.0.1): 56 data bytes
 64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.084 ms
 
@@ -403,7 +401,7 @@ The command specified can include calls that will be run by concur against an in
 run prior to invocation unless escaped. Examples of characters and sequences that need to be escaped include `` ` `` and `$(`.
 
 ```sh
-$ ls -1 /var/log/*log | concur -c "echo count \`wc -l {1}\`"
+$ ls -1 /var/log/*log | concur 'echo count \`wc -l {1}\`'
 count 32 /var/log/fsck_apfs_error.log
 count 432 /var/log/acroUpdaterTools.log
 count 524 /var/log/system.log
@@ -415,7 +413,7 @@ count 140367 /var/log/install.log
 ```
 
 ```sh
-$ ls -1 /var/log/*log | concur -c "echo count \$(wc -l {1})"
+$ ls -1 /var/log/*log | concur "echo count \$(wc -l {1})"
 count 32 /var/log/fsck_apfs_error.log
 count 432 /var/log/acroUpdaterTools.log
 count 524 /var/log/system.log
@@ -429,7 +427,7 @@ count 140367 /var/log/install.log
 **Note** that the same result can be obtained without escaping by using single quotes around the command.
 
 ```sh
-$ ls -1 /var/log/*log | concur -c 'echo count $(wc -l {1})'
+$ ls -1 /var/log/*log | concur 'echo count $(wc -l {1})'
 count 0 /var/log/fsck_apfs_error.log
 count 294 /var/log/system.log
 count 432 /var/log/acroUpdaterTools.log
@@ -453,7 +451,7 @@ Currently filenames will not result in special handling as files or a source of 
 Simple sequences are supported
 
 ```sh
-$ concur -c 'echo "Argument: {}"' -a "{1..4}"
+$ concur 'echo "Argument: {}"' -a "{1..4}"
 Argument: 1
 Argument: 4
 Argument: 2
@@ -463,7 +461,7 @@ Argument: 3
 Argument lists can be specified separated by spaces
 
 ```sh
-$ concur -c 'echo "Argument: {}"' -a "1 2 3 4"
+$ concur 'echo "Argument: {}"' -a "1 2 3 4"
 Argument: 1
 Argument: 4
 Argument: 2
@@ -473,7 +471,7 @@ Argument: 3
 Argument lists can include literals and ranges
 
 ```sh
-$ concur -c 'echo "Argument: {}"' -a '1 2 3 4 5 {6..10}'
+$ concur 'echo "Argument: {}"' -a '1 2 3 4 5 {6..10}'
 Argument: 7
 Argument: 2
 Argument: 6
@@ -503,7 +501,7 @@ Argument: 8 100
 ```
 
 ```sh
-$ concur -c 'echo "{1} {2}"' -a "/var/log/*log" -a "$(echo {1..10..2})"
+$ concur 'echo "{1} {2}"' -a "/var/log/*log" -a "$(echo {1..10..2})"
 /var/log/wifi.log 5
 /var/log/fsck_hfs.log 7
 /var/log/shutdown_monitor.log 1
@@ -515,7 +513,7 @@ $ concur -c 'echo "{1} {2}"' -a "/var/log/*log" -a "$(echo {1..10..2})"
 ```
 
 ```sh
-$ concur -c 'echo Slot {%} {1}' -a '/var/log/*log' -slots  2
+$ concur 'echo Slot {%} {1}' -a '/var/log/*log' -slots  2
 Slot 1 /var/log/acroUpdaterTools.log
 Slot 2 /var/log/fsck_apfs.log
 Slot 1 /var/log/fsck_apfs_error.log
@@ -547,7 +545,7 @@ parallel echo "Argument: {}" ::: 1 2 3 4 5 {6..10}  0.33s user 0.19s system 241%
 ```
 
 ```sh
-$ time concur -c 'echo Argument: {}' -a '1 2 3 4 5 {6..10}'
+$ time concur 'echo Argument: {}' -a '1 2 3 4 5 {6..10}'
 Argument: 8
 Argument: 1
 Argument: 4
@@ -559,7 +557,7 @@ Argument: 7
 Argument: 9
 Argument: 10
 
-concur -c 'echo Argument: {}' -a '1 2 3 4 5 {6..10}'  0.02s user 0.04s system 218% cpu 0.025 total
+concur 'echo Argument: {}' -a '1 2 3 4 5 {6..10}'  0.02s user 0.04s system 218% cpu 0.025 total
 ```
 
 ## Trivia

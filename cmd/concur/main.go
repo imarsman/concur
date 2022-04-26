@@ -54,7 +54,7 @@ func readLines(path string) ([]string, error) {
 
 // Args command line arguments
 type Args struct {
-	Command     string   `arg:"-c,--command"`
+	Command     string   `arg:"positional"`
 	Arguments   []string `arg:"-a,--arguments,separate" help:"lists of arguments"`
 	Awk         string   `arg:"-A,--awk" help:"process using awk script or a script filename."`
 	DryRun      bool     `arg:"-d,--dry-run" help:"show command to run but don't run"`
@@ -95,7 +95,6 @@ func main() {
 	// Here we define completion values for each flag.
 	cmd := &complete.Command{
 		Flags: map[string]complete.Predictor{
-			"command":       predict.Nothing,
 			"arguments":     predict.Nothing,
 			"awk":           predict.Nothing,
 			"dry-run":       predict.Nothing,
