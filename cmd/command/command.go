@@ -48,9 +48,6 @@ type Config struct {
 	StdIn       bool
 }
 
-func init() {
-}
-
 // Command a command
 type Command struct {
 	Input    string
@@ -71,17 +68,6 @@ func NewCommand(value string, taskListSet *tasks.TaskListSet, config Config) Com
 	}
 
 	return c
-}
-
-// SequenceSet set sequence
-// For use with things like {2} where getting extra items is needed.
-func (c *Command) SequenceSet(sequence int64) (err error) {
-	// if sequence > int64(len(tls.TaskLists)-1) {
-	// 	err = fmt.Errorf("sequence to set %d outside of max %d", len(tls.TaskLists)-1, sequence)
-	// }
-	atomic.AddInt64(&c.Sequence, sequence)
-
-	return
 }
 
 // GetSequence get lock free sequence value
