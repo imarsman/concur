@@ -178,47 +178,44 @@ func main() {
 	var foundArgumentList = false
 	if len(callArgs.Arguments) > 0 {
 		foundArgumentList = true
-		// Add list verbatim
-		if len(callArgs.Arguments) > 0 {
-			for _, v := range callArgs.Arguments {
-				taskList := tasks.NewTaskList()
-				parts := strings.Split(v, " ")
+		for _, v := range callArgs.Arguments {
+			taskList := tasks.NewTaskList()
+			parts := strings.Split(v, " ")
 
-				// TODO: handle reading file lines if that makes sense
-				for _, part := range parts {
-					part = strings.TrimSpace(part)
-					if parse.RERange.MatchString(part) {
-						items, err := parse.Range(part)
-						if err != nil {
-							fmt.Println(err)
-							return
-						}
-						taskList.Add(items...)
-					} else {
-						baseDir := filepath.Dir(part)
-						matches, err := filepath.Glob(part)
-						if err != nil {
-							continue
-						}
-						if len(matches) == 0 {
-							taskList.Add(strings.TrimSpace(part))
-						} else {
-							var files []string
-							for _, f := range matches {
-								f, _ := os.Stat(f)
-								if !f.IsDir() {
-									files = append(files, filepath.Join(baseDir, f.Name()))
-								}
-							}
-							taskList.Add(files...)
-						}
+			// TODO: handle reading file lines if that makes sense
+			for _, part := range parts {
+				part = strings.TrimSpace(part)
+				if parse.RERange.MatchString(part) {
+					items, err := parse.Range(part)
+					if err != nil {
+						fmt.Println(err)
+						return
 					}
-					if callArgs.Shuffle {
-						taskList.Shuffle()
+					taskList.Add(items...)
+				} else {
+					baseDir := filepath.Dir(part)
+					matches, err := filepath.Glob(part)
+					if err != nil {
+						continue
+					}
+					if len(matches) == 0 {
+						taskList.Add(strings.TrimSpace(part))
+					} else {
+						var files []string
+						for _, f := range matches {
+							f, _ := os.Stat(f)
+							if !f.IsDir() {
+								files = append(files, filepath.Join(baseDir, f.Name()))
+							}
+						}
+						taskList.Add(files...)
 					}
 				}
-				taskListSet.AddTaskList(taskList)
+				if callArgs.Shuffle {
+					taskList.Shuffle()
+				}
 			}
+			taskListSet.AddTaskList(taskList)
 		}
 	}
 
