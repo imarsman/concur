@@ -21,7 +21,6 @@ import (
 )
 
 var sem *semaphore.Weighted
-var printWG = new(sync.WaitGroup)
 
 func init() {
 	sem = semaphore.NewWeighted(8)
@@ -700,6 +699,8 @@ func (c *Command) Execute() (err error) {
 
 	return
 }
+
+var printWG = new(sync.WaitGroup)
 
 // Print send to output
 func (c *Command) Print(file *os.File, str string) {
