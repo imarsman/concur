@@ -60,6 +60,11 @@ tasks:
     #   - cmd: rm -f ../../build/{{.buildname}}
     #     ignore_error: true
     #   - go build -ldflags="{{.LDFLAGS}}" -o ../../build/{{.buildname}} .
+  release:
+    dir: .
+    desc: release to github using goreleaser
+    cmds:
+      - goreleaser release --rm-dist
   test-image:
     desc: a test of calling concur to copy an image then remove it
     dir: test/image
