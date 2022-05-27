@@ -5,19 +5,6 @@ version: "3"
 vars:
   targetbin: ~/bin
   buildname: concur
-  dir: >
-    {{.DIR}}
-  LDFLAGS: >
-    -X 'main.GitCommit=$GIT_COMMIT'
-    -X 'main.CompilationDate=$COMPILATION_DATE'
-    -X 'main.CommitDate=$COMMIT_DATE'
-env:
-  GIT_COMMIT:
-    sh: git rev-parse --short HEAD
-  COMPILATION_DATE:
-    sh: date "+%Y-%m-%d %H:%M:%S %z"
-  COMMIT_DATE:
-    sh: git log -1 --format="%ci"
 
 tasks:
   default:
@@ -25,18 +12,6 @@ tasks:
       - echo "use 'task -l' to list tasks"
     silent: true
   install:
-    # desc: copy build file to local bin
-    # dir: .
-    # preconditions:
-    #   - test -d {{.targetbin}}/
-    # cmds:
-    #   - task: build
-    #   - cmd: rm {{.targetbin}}/{{.buildname}}
-    #     ignore_error: true
-    #   - cmd: cp ./build/{{.buildname}} {{.targetbin}}
-    #     ignore_error: true
-    #   - cmd: rm -f ./build/{{.buildname}}
-    #     ignore_error: true
     desc: copy build file to local bin
     dir: .
     preconditions:
@@ -46,20 +21,12 @@ tasks:
       - cmd: rm {{.targetbin}}/{{.buildname}}
         ignore_error: true
       - cmd: cp dist/{{.buildname}}_{{OS}}_{{ARCH}}/{{.buildname}} {{.targetbin}}
-        # - cmd: cp ./build/{{.buildname}} {{.targetbin}}
         ignore_error: true
-      # - cmd: rm -f ./build/{{.buildname}}
-      #   ignore_error: true
   build:
     desc: build app
     cmds:
       - goreleaser release --snapshot --rm-dist
 
-    # dir: cmd/{{.buildname}}
-    # cmds:
-    #   - cmd: rm -f ../../build/{{.buildname}}
-    #     ignore_error: true
-    #   - go build -ldflags="{{.LDFLAGS}}" -o ../../build/{{.buildname}} .
   release:
     dir: .
     desc: release to github using goreleaser
