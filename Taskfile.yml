@@ -25,6 +25,18 @@ tasks:
       - echo "use 'task -l' to list tasks"
     silent: true
   install:
+    # desc: copy build file to local bin
+    # dir: .
+    # preconditions:
+    #   - test -d {{.targetbin}}/
+    # cmds:
+    #   - task: build
+    #   - cmd: rm {{.targetbin}}/{{.buildname}}
+    #     ignore_error: true
+    #   - cmd: cp ./build/{{.buildname}} {{.targetbin}}
+    #     ignore_error: true
+    #   - cmd: rm -f ./build/{{.buildname}}
+    #     ignore_error: true
     desc: copy build file to local bin
     dir: .
     preconditions:
@@ -33,17 +45,21 @@ tasks:
       - task: build
       - cmd: rm {{.targetbin}}/{{.buildname}}
         ignore_error: true
-      - cmd: cp ./build/{{.buildname}} {{.targetbin}}
+      - cmd: cp dist/{{.buildname}}_{{OS}}_{{ARCH}}/{{.buildname}} {{.targetbin}}
+        # - cmd: cp ./build/{{.buildname}} {{.targetbin}}
         ignore_error: true
-      - cmd: rm -f ./build/{{.buildname}}
-        ignore_error: true
+      # - cmd: rm -f ./build/{{.buildname}}
+      #   ignore_error: true
   build:
     desc: build app
-    dir: cmd/{{.buildname}}
     cmds:
-      - cmd: rm -f ../../build/{{.buildname}}
-        ignore_error: true
-      - go build -ldflags="{{.LDFLAGS}}" -o ../../build/{{.buildname}} .
+      - goreleaser release --snapshot --rm-dist
+
+    # dir: cmd/{{.buildname}}
+    # cmds:
+    #   - cmd: rm -f ../../build/{{.buildname}}
+    #     ignore_error: true
+    #   - go build -ldflags="{{.LDFLAGS}}" -o ../../build/{{.buildname}} .
   test-image:
     desc: a test of calling concur to copy an image then remove it
     dir: test/image
