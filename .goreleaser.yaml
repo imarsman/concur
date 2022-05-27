@@ -34,6 +34,9 @@ release:
   header: |
     ## concur ({{ .Date }})
 
+    v0.1.1
+    Using standard GO OS and ARCH values
+
     v0.1.0
     Initial release
 
