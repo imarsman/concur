@@ -22,11 +22,13 @@ import (
 
 var (
 	// GitCommit build flag
-	GitCommit string
-	// CompilationDate build flag
-	CompilationDate string
+	GitCommit   string
+	GitLastTag  string
+	GitExactTag string
+	// // CompilationDate build flag
+	// CompilationDate string
 	// CommitDate the date of latest commit
-	CommitDate string
+	Date string
 )
 
 var slots int
@@ -80,11 +82,11 @@ func (Args) Version() string {
 	if GitCommit != "" {
 		buf.WriteString(fmt.Sprintf("Commit: %13s\n", GitCommit))
 	}
-	if CommitDate != "" {
-		buf.WriteString(fmt.Sprintf("Commit date: %26s\n", CommitDate))
-	}
-	if CompilationDate != "" {
-		buf.WriteString(fmt.Sprintf("Compile Date: %12s\n", CompilationDate))
+	// if Date != "" {
+	// 	buf.WriteString(fmt.Sprintf("Commit date: %26s\n", Date))
+	// }
+	if Date != "" {
+		buf.WriteString(fmt.Sprintf("Compile Date: %12s\n", Date))
 	}
 
 	return buf.String()
